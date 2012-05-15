@@ -49,20 +49,23 @@ struct _PushApsMessageClass
    GObjectClass parent_class;
 };
 
-void         push_aps_message_add_extra (PushApsMessage *message,
-                                         const gchar    *key,
-                                         JsonNode       *node);
-GType        push_aps_message_get_type  (void) G_GNUC_CONST;
-const gchar *push_aps_message_get_alert (PushApsMessage *message);
-guint        push_aps_message_get_badge (PushApsMessage *message);
-const gchar *push_aps_message_get_sound (PushApsMessage *message);
-void         push_aps_message_set_alert (PushApsMessage *message,
-                                         const gchar    *alert);
-void         push_aps_message_set_badge (PushApsMessage *message,
-                                         guint           badge);
-void         push_aps_message_set_sound (PushApsMessage *message,
-                                         const gchar    *sound);
-gchar       *push_aps_message_to_json   (PushApsMessage *message);
+void         push_aps_message_add_extra        (PushApsMessage *message,
+                                                const gchar    *key,
+                                                JsonNode       *node);
+void         push_aps_message_add_extra_string (PushApsMessage *message,
+                                                const gchar    *key,
+                                                const gchar    *value);
+GType        push_aps_message_get_type         (void) G_GNUC_CONST;
+const gchar *push_aps_message_get_alert        (PushApsMessage *message);
+guint        push_aps_message_get_badge        (PushApsMessage *message);
+const gchar *push_aps_message_get_sound        (PushApsMessage *message);
+void         push_aps_message_set_alert        (PushApsMessage *message,
+                                                const gchar    *alert);
+void         push_aps_message_set_badge        (PushApsMessage *message,
+                                                guint           badge);
+void         push_aps_message_set_sound        (PushApsMessage *message,
+                                                const gchar    *sound);
+gchar       *push_aps_message_to_json          (PushApsMessage *message);
 
 G_END_DECLS
 

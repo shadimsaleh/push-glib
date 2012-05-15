@@ -124,6 +124,26 @@ push_aps_message_add_extra (PushApsMessage *message,
    EXIT;
 }
 
+void
+push_aps_message_add_extra_string (PushApsMessage *message,
+                                   const gchar    *key,
+                                   const gchar    *value)
+{
+   JsonNode *node;
+
+   ENTRY;
+
+   g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+   g_return_if_fail(key);
+
+   node = json_node_new(JSON_NODE_VALUE);
+   json_node_set_string(node, value);
+   push_aps_message_add_extra(message, key, node);
+   json_node_free(node);
+
+   EXIT;
+}
+
 const gchar *
 push_aps_message_get_alert (PushApsMessage *message)
 {
