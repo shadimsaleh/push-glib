@@ -47,7 +47,7 @@ deliver_cb (GObject      *object,
    GError *error = NULL;
 
    if (!push_c2dm_client_deliver_finish(client, result, &error)) {
-      g_printerr("%s\n", error->message);
+      g_printerr("ERROR: %s\n", error->message);
       g_error_free(error);
    } else {
       g_print("Notification sent.\n");
