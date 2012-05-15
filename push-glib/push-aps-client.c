@@ -51,6 +51,22 @@ static guint       gSignals[LAST_SIGNAL];
 
 static void push_aps_client_try_load_tls (PushApsClient *client);
 
+/**
+ * push_aps_client_deliver_async:
+ * @client: A #PushApsClient.
+ * @identity: A #PushApsIdentity.
+ * @message: A #PushApsMessage.
+ * @cancellable: (allow-none: A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback to execute upon completion.
+ * @user_data: User data for @callback.
+ *
+ * Asynchronously requests that @message be delivered to @identity.
+ * The message is serialized and sent via the Apple push notification
+ * gateway who performs the actual delivery to the identified device.
+ *
+ * @callback MUST call push_aps_client_deliver_finish() with the
+ * provided #GAsyncResult.
+ */
 void
 push_aps_client_deliver_async (PushApsClient       *client,
                                PushApsIdentity     *identity,
@@ -91,6 +107,16 @@ push_aps_client_deliver_async (PushApsClient       *client,
    EXIT;
 }
 
+/**
+ * push_aps_client_deliver_finish:
+ * @client: A #PushApsClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to push_aps_client_deliver_async().
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 push_aps_client_deliver_finish (PushApsClient  *client,
                                 GAsyncResult   *result,
@@ -111,6 +137,15 @@ push_aps_client_deliver_finish (PushApsClient  *client,
    RETURN(ret);
 }
 
+/**
+ * push_aps_client_get_ssl_cert_file:
+ * @client: (in): A #PushApsClient.
+ *
+ * Fetches the "ssl-cert-file" property. This is a path to the file
+ * containing the TLS certificate.
+ *
+ * Returns: A string which should not be modified or freed.
+ */
 const gchar *
 push_aps_client_get_ssl_cert_file (PushApsClient *client)
 {
@@ -118,6 +153,15 @@ push_aps_client_get_ssl_cert_file (PushApsClient *client)
    return client->priv->ssl_cert_file;
 }
 
+/**
+ * push_aps_client_get_ssl_key_file:
+ * @client: (in): A #PushApsClient.
+ *
+ * Fetches the "ssl-key-file" property. This is a path to the file
+ * containing the TLS private key.
+ *
+ * Returns: A string which should not be modified or freed.
+ */
 const gchar *
 push_aps_client_get_ssl_key_file (PushApsClient *client)
 {
@@ -125,6 +169,15 @@ push_aps_client_get_ssl_key_file (PushApsClient *client)
    return client->priv->ssl_key_file;
 }
 
+/**
+ * push_aps_client_get_tls_certificate:
+ * @client: (in): A #PushApsClient.
+ *
+ * Fetches the #GTlsCertificate used to communicate with the
+ * Apple Push Notification gateway.
+ *
+ * Returns: (transfer none): A #GTlsCertificate.
+ */
 GTlsCertificate *
 push_aps_client_get_tls_certificate (PushApsClient *client)
 {
