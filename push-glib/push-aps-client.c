@@ -28,6 +28,7 @@ struct _PushApsClientPrivate
    gchar *ssl_cert_file;
    gchar *ssl_key_file;
    GTlsCertificate *tls_certificate;
+   GError *tls_error;
 };
 
 enum
@@ -47,6 +48,8 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 static guint       gSignals[LAST_SIGNAL];
+
+static void push_aps_client_try_load_tls (PushApsClient *client);
 
 const gchar *
 push_aps_client_get_ssl_cert_file (PushApsClient *client)
@@ -76,6 +79,7 @@ push_aps_client_set_ssl_cert_file (PushApsClient *client,
    ENTRY;
    g_return_if_fail(PUSH_IS_APS_CLIENT(client));
    client->priv->ssl_cert_file = g_strdup(ssl_cert_file);
+   push_aps_client_try_load_tls(client);
    EXIT;
 }
 
@@ -86,6 +90,7 @@ push_aps_client_set_ssl_key_file (PushApsClient *client,
    ENTRY;
    g_return_if_fail(PUSH_IS_APS_CLIENT(client));
    client->priv->ssl_key_file = g_strdup(ssl_key_file);
+   push_aps_client_try_load_tls(client);
    EXIT;
 }
 
@@ -98,6 +103,31 @@ push_aps_client_set_tls_certificate (PushApsClient   *client,
    client->priv->tls_certificate =
       tls_certificate ? g_object_ref(tls_certificate) : NULL;
    EXIT;
+}
+
+static void
+push_aps_client_try_load_tls (PushApsClient *client)
+{
+   PushApsClientPrivate *priv;
+   GTlsCertificate *tls;
+   GError *error = NULL;
+
+   g_return_if_fail(PUSH_IS_APS_CLIENT(client));
+
+   priv = client->priv;
+
+   if (priv->ssl_cert_file && priv->ssl_key_file) {
+      if (!(tls = g_tls_certificate_new_from_files(priv->ssl_cert_file,
+                                                   priv->ssl_key_file,
+                                                   &error))) {
+         g_clear_error(&priv->tls_error);
+         g_warning("TLS Certificate Error: %s", error->message);
+         priv->tls_error = error;
+      } else {
+         push_aps_client_set_tls_certificate(client, tls);
+         g_object_unref(tls);
+      }
+   }
 }
 
 static void
@@ -116,6 +146,8 @@ push_aps_client_finalize (GObject *object)
    priv->ssl_key_file = NULL;
 
    g_clear_object(&priv->tls_certificate);
+
+   g_clear_error(&priv->tls_error);
 
    G_OBJECT_CLASS(push_aps_client_parent_class)->finalize(object);
 
