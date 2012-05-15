@@ -25,7 +25,7 @@ G_DEFINE_TYPE(PushC2dmMessage, push_c2dm_message, G_TYPE_OBJECT)
 
 struct _PushC2dmMessagePrivate
 {
-   SoupMessage *message;
+   GHashTable *params;
    gchar *collapse_key;
    gboolean delay_while_idle;
 };
@@ -54,6 +54,32 @@ push_c2dm_message_new (void)
 }
 
 /**
+ * push_c2dm_message_get_params:
+ * @message: (in): A #PushC2dmMessage.
+ *
+ * Retrieves additional parameters that for the #PushC2dmMessage. These
+ * get encoded as "data.param" parameters to the C2DM HTTP endpoint.
+ *
+ * Returns: (transfer none) (element-type gchar* gchar*): A #GHashTable.
+ */
+GHashTable *
+push_c2dm_message_get_params (PushC2dmMessage *message)
+{
+   PushC2dmMessagePrivate *priv;
+
+   g_return_val_if_fail(PUSH_IS_C2DM_MESSAGE(message), NULL);
+
+   priv = message->priv;
+
+   if (!priv->params) {
+      priv->params =
+         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+   }
+
+   return priv->params;
+}
+
+/**
  * push_c2dm_message_add_param:
  * @message: (in): A #PushC2dmMessage.
  * @param: (in): The key for the parameter.
@@ -67,15 +93,13 @@ push_c2dm_message_add_param (PushC2dmMessage *message,
                              const gchar     *param,
                              const gchar     *value)
 {
-   gchar *data_key;
+   GHashTable *params;
 
    g_return_if_fail(PUSH_IS_C2DM_MESSAGE(message));
    g_return_if_fail(param);
 
-   data_key = g_strdup_printf("data.%s", param);
-   soup_message_headers_append(message->priv->message->request_headers,
-                               data_key, value);
-   g_free(data_key);
+   params = push_c2dm_message_get_params(message);
+   g_hash_table_insert(params, g_strdup(param), g_strdup(value ? value : ""));
 }
 
 /**
@@ -153,8 +177,14 @@ static void
 push_c2dm_message_finalize (GObject *object)
 {
    PushC2dmMessagePrivate *priv = PUSH_C2DM_MESSAGE(object)->priv;
-   g_clear_object(&priv->message);
+
+   if (priv->params) {
+      g_hash_table_unref(priv->params);
+      priv->params = NULL;
+   }
+
    g_free(priv->collapse_key);
+
    G_OBJECT_CLASS(push_c2dm_message_parent_class)->finalize(object);
 }
 
@@ -256,7 +286,4 @@ push_c2dm_message_init (PushC2dmMessage *message)
    message->priv = G_TYPE_INSTANCE_GET_PRIVATE(message,
                                                PUSH_TYPE_C2DM_MESSAGE,
                                                PushC2dmMessagePrivate);
-   message->priv->message =
-      soup_message_new("POST",
-                       "https://android.apis.google.com/c2dm/send");
 }
