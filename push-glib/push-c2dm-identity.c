@@ -19,6 +19,7 @@
 #include <glib/gi18n.h>
 
 #include "push-c2dm-identity.h"
+#include "push-debug.h"
 
 G_DEFINE_TYPE(PushC2dmIdentity, push_c2dm_identity, G_TYPE_OBJECT)
 
@@ -47,24 +48,29 @@ void
 push_c2dm_identity_set_registration_id (PushC2dmIdentity *identity,
                                         const gchar      *registration_id)
 {
-   PushC2dmIdentityPrivate *priv;
-
+   ENTRY;
    g_return_if_fail(PUSH_IS_C2DM_IDENTITY(identity));
-
-   priv = identity->priv;
-
-   g_free(priv->registration_id);
-   priv->registration_id = g_strdup(registration_id);
+   g_free(identity->priv->registration_id);
+   identity->priv->registration_id = g_strdup(registration_id);
    g_object_notify_by_pspec(G_OBJECT(identity),
                             gParamSpecs[PROP_REGISTRATION_ID]);
+   EXIT;
 }
 
 static void
 push_c2dm_identity_finalize (GObject *object)
 {
-   PushC2dmIdentityPrivate *priv = PUSH_C2DM_IDENTITY(object)->priv;
+   PushC2dmIdentityPrivate *priv;
+
+   ENTRY;
+
+   priv = PUSH_C2DM_IDENTITY(object)->priv;
+
    g_free(priv->registration_id);
+
    G_OBJECT_CLASS(push_c2dm_identity_parent_class)->finalize(object);
+
+   EXIT;
 }
 
 static void
@@ -108,6 +114,8 @@ push_c2dm_identity_class_init (PushC2dmIdentityClass *klass)
 {
    GObjectClass *object_class;
 
+   ENTRY;
+
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = push_c2dm_identity_finalize;
    object_class->get_property = push_c2dm_identity_get_property;
@@ -128,12 +136,16 @@ push_c2dm_identity_class_init (PushC2dmIdentityClass *klass)
                           G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_REGISTRATION_ID,
                                    gParamSpecs[PROP_REGISTRATION_ID]);
+
+   EXIT;
 }
 
 static void
 push_c2dm_identity_init (PushC2dmIdentity *identity)
 {
+   ENTRY;
    identity->priv = G_TYPE_INSTANCE_GET_PRIVATE(identity,
                                                 PUSH_TYPE_C2DM_IDENTITY,
                                                 PushC2dmIdentityPrivate);
+   EXIT;
 }
