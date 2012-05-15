@@ -124,7 +124,6 @@ push_c2dm_client_deliver_async (PushC2dmClient      *client,
                               request,
                               push_c2dm_client_message_cb,
                               simple);
-   g_object_unref(request);
    g_hash_table_unref(params);
 
    EXIT;
