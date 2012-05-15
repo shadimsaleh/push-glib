@@ -1,5 +1,11 @@
 bin_PROGRAMS =
+bin_PROGRAMS += push-aps
 bin_PROGRAMS += push-c2dm
+
+
+#
+# push-c2dm program
+#
 
 push_c2dm_SOURCES =
 push_c2dm_SOURCES += $(top_srcdir)/tools/push-c2dm.c
@@ -12,3 +18,20 @@ push_c2dm_CFLAGS += -I$(top_srcdir)/
 
 push_c2dm_LDADD =
 push_c2dm_LDADD += $(top_builddir)/libpush-glib-1.0.la
+
+
+#
+# push-aps program
+#
+
+push_aps_SOURCES =
+push_aps_SOURCES += $(top_srcdir)/tools/push-aps.c
+
+push_aps_CFLAGS =
+push_aps_CFLAGS += $(GOBJECT_CFLAGS)
+push_aps_CFLAGS += $(SOUP_CFLAGS)
+push_aps_CFLAGS += $(JSON_CFLAGS)
+push_aps_CFLAGS += -I$(top_srcdir)/
+
+push_aps_LDADD =
+push_aps_LDADD += $(top_builddir)/libpush-glib-1.0.la

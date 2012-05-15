@@ -23,4 +23,5 @@ missing
 stamp-h1
 *.swp
 *.typelib
+push-aps
 push-c2dm
