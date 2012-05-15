@@ -79,15 +79,19 @@ push_c2dm_message_build_params (PushC2dmMessage *message)
    priv = message->priv;
 
    params = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-   g_hash_table_insert(params,
-                       g_strdup("collapse_key"),
-                       g_strdup(priv->collapse_key));
+   if (priv->collapse_key) {
+      g_hash_table_insert(params,
+                          g_strdup("collapse_key"),
+                          g_strdup(priv->collapse_key));
+   }
    g_hash_table_insert(params,
                        g_strdup("delay_while_idle"),
                        g_strdup(priv->delay_while_idle ? "1" : ""));
-   g_hash_table_iter_init(&iter, priv->params);
-   while (g_hash_table_iter_next(&iter, &key, &value)) {
-      g_hash_table_insert(params, g_strdup(key), g_strdup(value));
+   if (priv->params) {
+      g_hash_table_iter_init(&iter, priv->params);
+      while (g_hash_table_iter_next(&iter, &key, &value)) {
+         g_hash_table_insert(params, g_strdup(key), g_strdup(value));
+      }
    }
 
    RETURN(params);
