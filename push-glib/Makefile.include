@@ -1,0 +1,64 @@
+-include $(INTROSPECTION_MAKEFILE)
+
+headerdir = $(prefix)/include/push-glib-1.0/push-glib
+header_DATA = $(INST_H_FILES)
+
+lib_LTLIBRARIES =
+lib_LTLIBRARIES += libpush-glib-1.0.la
+
+INST_H_FILES =
+INST_H_FILES += $(top_srcdir)/push-glib/push-c2dm-client.h
+INST_H_FILES += $(top_srcdir)/push-glib/push-c2dm-identity.h
+INST_H_FILES += $(top_srcdir)/push-glib/push-c2dm-message.h
+INST_H_FILES += $(top_srcdir)/push-glib/push-glib.h
+
+NOINST_H_FILES =
+NOINST_H_FILES += $(top_srcdir)/push-glib/push-debug.h
+
+GIR_FILES =
+GIR_FILES += $(INST_H_FILES)
+GIR_FILES += $(top_srcdir)/push-glib/push-c2dm-client.c
+GIR_FILES += $(top_srcdir)/push-glib/push-c2dm-identity.c
+GIR_FILES += $(top_srcdir)/push-glib/push-c2dm-message.c
+
+libpush_glib_1_0_la_SOURCES =
+libpush_glib_1_0_la_SOURCES += $(INST_H_FILES)
+libpush_glib_1_0_la_SOURCES += $(NOINST_H_FILES)
+libpush_glib_1_0_la_SOURCES += $(top_srcdir)/push-glib/push-c2dm-client.c
+libpush_glib_1_0_la_SOURCES += $(top_srcdir)/push-glib/push-c2dm-identity.c
+libpush_glib_1_0_la_SOURCES += $(top_srcdir)/push-glib/push-c2dm-message.c
+
+libpush_glib_1_0_la_CPPFLAGS =
+libpush_glib_1_0_la_CPPFLAGS += $(GIO_CFLAGS)
+libpush_glib_1_0_la_CPPFLAGS += $(GOBJECT_CFLAGS)
+libpush_glib_1_0_la_CPPFLAGS += $(SOUP_CFLAGS)
+libpush_glib_1_0_la_CPPFLAGS += -DPUSH_COMPILATION
+libpush_glib_1_0_la_CPPFLAGS += '-DG_LOG_DOMAIN="push"'
+
+libpush_glib_1_0_la_LIBADD =
+libpush_glib_1_0_la_LIBADD += $(GIO_LIBS)
+libpush_glib_1_0_la_LIBADD += $(GOBJECT_LIBS)
+libpush_glib_1_0_la_LIBADD += $(SOUP_LIBS)
+
+INTROSPECTION_GIRS =
+INTROSPECTION_SCANNER_ARGS = --add-include-path=$(top_srcdir)/push-glib --warn-all
+INTROSPECTION_COMPILER_ARGS = --includedir=$(top_srcdir)/push-glib
+
+if HAVE_INTROSPECTION
+
+Push-1.0.gir: libpush-glib-1.0.la
+Push_1_0_gir_INCLUDES = Gio-2.0 GObject-2.0 Soup-2.4
+Push_1_0_gir_CFLAGS = -DPUSH_COMPILATION
+Push_1_0_gir_LIBS = libpush-glib-1.0.la
+Push_1_0_gir_FILES = $(GIR_FILES)
+INTROSPECTION_GIRS += Push-1.0.gir
+
+girdir = $(datadir)/gir-1.0
+gir_DATA = $(INTROSPECTION_GIRS)
+
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
+
+CLEANFILES = $(gir_DATA) $(typelib_DATA)
+
+endif

@@ -1,0 +1,8 @@
+*.stamp
+html
+xml
+tmpl
+push-glib.*
+*.txt
+version.xml
+*.bak

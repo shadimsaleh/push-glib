@@ -1,0 +1,11 @@
+-------------------------------------------------------------------------------
+                  Push-GLib - Push Notifications for GLib
+-------------------------------------------------------------------------------
+
+This library provides the ability to send push notifications to various
+mobile devices. Currently supported is Apple's Push Notification service and
+Google's C2DM as used by Android.
+
+The API will likely churn a lot until a good design is proved.
+
+-- Christian
