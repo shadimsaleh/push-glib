@@ -23,8 +23,8 @@ CFILE_GLOB=$(top_srcdir)/push-glib/*.c
 
 # Header files to ignore when scanning
 IGNORE_HFILES= \
-	push-glib.h \
-	push-debug.h \
+	$(top_srcdir)/push-glib/push-glib.h \
+	$(top_srcdir)/push-glib/push-debug.h \
 	$(NULL)
 
 # CFLAGS and LDFLAGS for compiling scan program. Only needed
