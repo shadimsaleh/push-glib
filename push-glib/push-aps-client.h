@@ -27,6 +27,7 @@
 G_BEGIN_DECLS
 
 #define PUSH_TYPE_APS_CLIENT            (push_aps_client_get_type())
+#define PUSH_TYPE_APS_CLIENT_MODE       (push_aps_client_mode_get_type())
 #define PUSH_APS_CLIENT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), PUSH_TYPE_APS_CLIENT, PushApsClient))
 #define PUSH_APS_CLIENT_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), PUSH_TYPE_APS_CLIENT, PushApsClient const))
 #define PUSH_APS_CLIENT_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  PUSH_TYPE_APS_CLIENT, PushApsClientClass))
@@ -37,6 +38,13 @@ G_BEGIN_DECLS
 typedef struct _PushApsClient        PushApsClient;
 typedef struct _PushApsClientClass   PushApsClientClass;
 typedef struct _PushApsClientPrivate PushApsClientPrivate;
+typedef enum   _PushApsClientMode    PushApsClientMode;
+
+enum
+{
+   PUSH_APS_CLIENT_PRODUCTION = 0,
+   PUSH_APS_CLIENT_SANDBOX    = 1,
+};
 
 struct _PushApsClient
 {
@@ -51,6 +59,7 @@ struct _PushApsClientClass
    GObjectClass parent_class;
 };
 
+GType    push_aps_client_mode_get_type  (void) G_GNUC_CONST;
 GType    push_aps_client_get_type       (void) G_GNUC_CONST;
 void     push_aps_client_deliver_async  (PushApsClient        *client,
                                          PushApsIdentity      *identity,

@@ -376,3 +376,26 @@ push_aps_client_init (PushApsClient *client)
                                               PushApsClientPrivate);
    EXIT;
 }
+
+GType
+push_aps_client_mode_get_type (void)
+{
+   static GType type_id;
+   static gsize initialized = FALSE;
+   static GEnumValue values[] = {
+      { PUSH_APS_CLIENT_PRODUCTION,
+        "PUSH_APS_CLIENT_PRODUCTION",
+        "PRODUCTION" },
+      { PUSH_APS_CLIENT_SANDBOX,
+        "PUSH_APS_CLIENT_SANDBOX",
+        "SANDBOX" },
+      { 0 }
+   };
+
+   if (g_once_init_enter(&initialized)) {
+      type_id = g_enum_register_static("PushApsClientMode", values);
+      g_once_init_leave(&initialized, TRUE);
+   }
+
+   return type_id;
+}
