@@ -65,6 +65,11 @@ push_c2dm_client_message_cb (SoupSession *session,
 {
    GSimpleAsyncResult *simple = user_data;
    PushC2dmClient *client = (PushC2dmClient *)session;
+   const guint8 *data;
+   const gchar *code_str;
+   SoupBuffer *buffer;
+   gsize length;
+   guint code;
 
    ENTRY;
 
@@ -72,16 +77,55 @@ push_c2dm_client_message_cb (SoupSession *session,
    g_return_if_fail(SOUP_IS_MESSAGE(message));
    g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (SOUP_STATUS_IS_SUCCESSFUL(message->status_code)) {
-      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-   } else {
+   buffer = soup_message_body_flatten(message->response_body);
+   soup_buffer_get_data(buffer, &data, &length);
+
+   if (!g_utf8_validate((gchar *)data, length, NULL)) {
       g_simple_async_result_set_error(simple,
                                       PUSH_C2DM_CLIENT_ERROR,
-                                      PUSH_C2DM_CLIENT_ERROR_REQUEST_FAILED,
-                                      _("C2DM request failed with code: %u"),
-                                      message->status_code);
+                                      PUSH_C2DM_CLIENT_ERROR_UNKNOWN,
+                                      _("Received invalid result from C2DM."));
+      GOTO(failure);
    }
 
+   if (g_str_has_prefix((gchar *)data, "id=")) {
+      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+   } else {
+      if (g_str_equal(data, "Error=QuotaExceeded")) {
+         code = PUSH_C2DM_CLIENT_ERROR_QUOTA_EXCEEDED;
+         code_str = _("Quota exceeded.");
+      } else if (g_str_equal(data, "Error=DeviceQuotaExceeded")) {
+         code = PUSH_C2DM_CLIENT_ERROR_DEVICE_QUOTA_EXCEEDED;
+         code_str = _("Device quota exceeded.");
+      } else if (g_str_equal(data, "Error=MissingRegistration")) {
+         code = PUSH_C2DM_CLIENT_ERROR_MISSING_REGISTRATION;
+         code_str = _("Missing registration.");
+      } else if (g_str_equal(data, "Error=InvalidRegistration")) {
+         code = PUSH_C2DM_CLIENT_ERROR_INVALID_REGISTRATION;
+         code_str = _("Invalid registration.");
+      } else if (g_str_equal(data, "Error=MismatchSenderId")) {
+         code = PUSH_C2DM_CLIENT_ERROR_MISMATCH_SENDER_ID;
+         code_str = _("Mismatch sender id.");
+      } else if (g_str_equal(data, "Error=NotRegistered")) {
+         code = PUSH_C2DM_CLIENT_ERROR_NOT_REGISTERED;
+         code_str = _("Not registered.");
+      } else if (g_str_equal(data, "Error=MessageTooBig")) {
+         code = PUSH_C2DM_CLIENT_ERROR_MESSAGE_TOO_BIG;
+         code_str = _("Message too big.");
+      } else if (g_str_equal(data, "Error=MissingCollapseKey")) {
+         code = PUSH_C2DM_CLIENT_ERROR_MISSING_COLLAPSE_KEY;
+         code_str = _("Missing collapse key.");
+      } else {
+         code = PUSH_C2DM_CLIENT_ERROR_UNKNOWN;
+         code_str = _("An unknown error occurred.");
+      }
+      g_simple_async_result_set_error(simple,
+                                      PUSH_C2DM_CLIENT_ERROR,
+                                      code, "%s", code_str);
+   }
+
+failure:
+   soup_buffer_free(buffer);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
