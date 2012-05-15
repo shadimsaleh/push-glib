@@ -42,7 +42,7 @@ enum
 
 enum
 {
-   DEVICE_REMOVED,
+   IDENTITY_REMOVED,
    LAST_SIGNAL
 };
 
@@ -240,16 +240,16 @@ push_aps_client_class_init (PushApsClientClass *klass)
    g_object_class_install_property(object_class, PROP_TLS_CERTIFICATE,
                                    gParamSpecs[PROP_TLS_CERTIFICATE]);
 
-   gSignals[DEVICE_REMOVED] = g_signal_new("device-removed",
-                                           PUSH_TYPE_APS_CLIENT,
-                                           G_SIGNAL_RUN_FIRST,
-                                           0,
-                                           NULL,
-                                           NULL,
-                                           g_cclosure_marshal_VOID__OBJECT,
-                                           G_TYPE_NONE,
-                                           1,
-                                           PUSH_TYPE_APS_IDENTITY);
+   gSignals[IDENTITY_REMOVED] = g_signal_new("identity-removed",
+                                             PUSH_TYPE_APS_CLIENT,
+                                             G_SIGNAL_RUN_FIRST,
+                                             0,
+                                             NULL,
+                                             NULL,
+                                             g_cclosure_marshal_VOID__OBJECT,
+                                             G_TYPE_NONE,
+                                             1,
+                                             PUSH_TYPE_APS_IDENTITY);
 
    EXIT;
 }
