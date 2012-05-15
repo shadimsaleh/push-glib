@@ -1,6 +1,7 @@
 include Makefile.include
 include Makefile.tests
 include push-glib/Makefile.include
+include tools/Makefile.include
 include tests/Makefile.include
 
 SUBDIRS = . doc

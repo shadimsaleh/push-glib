@@ -1,0 +1,13 @@
+bin_PROGRAMS =
+bin_PROGRAMS += push-c2dm
+
+push_c2dm_SOURCES =
+push_c2dm_SOURCES += $(top_srcdir)/tools/push-c2dm.c
+
+push_c2dm_CFLAGS =
+push_c2dm_CFLAGS += $(GOBJECT_CFLAGS)
+push_c2dm_CFLAGS += $(SOUP_CFLAGS)
+push_c2dm_CFLAGS += -I$(top_srcdir)/
+
+push_c2dm_LDADD =
+push_c2dm_LDADD += $(top_builddir)/libpush-glib-1.0.la
