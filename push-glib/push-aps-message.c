@@ -109,6 +109,7 @@ push_aps_message_add_extra (PushApsMessage *message,
 
    g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
    g_return_if_fail(key);
+   g_return_if_fail(!g_str_equal(key, "aps"));
    g_return_if_fail(value);
 
    priv = message->priv;
