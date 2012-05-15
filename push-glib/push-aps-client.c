@@ -30,6 +30,8 @@ struct _PushApsClientPrivate
    GError *tls_error;
    gchar *ssl_cert_file;
    gchar *ssl_key_file;
+   GIOStream *feedback_stream;
+   GIOStream *gateway_stream;
 };
 
 enum
@@ -93,6 +95,17 @@ push_aps_client_deliver_async (PushApsClient       *client,
                                            callback,
                                            user_data,
                                            priv->tls_error);
+      EXIT;
+   }
+
+   if (!priv->gateway_stream) {
+      g_simple_async_report_error_in_idle(G_OBJECT(client),
+                                          callback,
+                                          user_data,
+                                          PUSH_APS_CLIENT_ERROR,
+                                          PUSH_APS_CLIENT_ERROR_NOT_CONNECTED,
+                                          _("Not currently connected to "
+                                            "APS gateway."));
       EXIT;
    }
 
@@ -434,4 +447,10 @@ push_aps_client_mode_get_type (void)
    }
 
    return type_id;
+}
+
+GQuark
+push_aps_client_error_quark (void)
+{
+   return g_quark_from_static_string("push-aps-client-error-quark");
 }
