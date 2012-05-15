@@ -29,6 +29,7 @@ struct _PushApsMessagePrivate
    gchar *alert;
    guint badge;
    gchar *sound;
+   gchar *json;
 };
 
 enum
@@ -36,14 +37,26 @@ enum
    PROP_0,
    PROP_ALERT,
    PROP_BADGE,
+   PROP_JSON,
    PROP_SOUND,
    LAST_PROP
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
-gchar *
-push_aps_message_to_json (PushApsMessage *message)
+/**
+ * push_aps_message_get_json:
+ * @message: (in): A #PushApsMessage.
+ *
+ * Retrieves the message as a JSON encoded message. The resulting string
+ * is owned by the #PushApsMessage instance and should not be freed.
+ *
+ * The string may be cached for future calls to this function.
+ *
+ * Returns: The message as a JSON encoded string.
+ */
+const gchar *
+push_aps_message_get_json (PushApsMessage *message)
 {
    PushApsMessagePrivate *priv;
    GHashTableIter iter;
@@ -60,6 +73,10 @@ push_aps_message_to_json (PushApsMessage *message)
    g_return_val_if_fail(PUSH_IS_APS_MESSAGE(message), NULL);
 
    priv = message->priv;
+
+   if (priv->json) {
+      RETURN(priv->json);
+   }
 
    json = json_generator_new();
 
@@ -95,6 +112,9 @@ push_aps_message_to_json (PushApsMessage *message)
    json_node_free(root);
    g_object_unref(json);
 
+   g_free(priv->json);
+   priv->json = ret;
+
    RETURN(ret);
 }
 
@@ -121,6 +141,9 @@ push_aps_message_add_extra (PushApsMessage *message,
    }
 
    g_hash_table_insert(priv->extra, g_strdup(key), json_node_copy(value));
+
+   g_free(priv->json);
+   priv->json = NULL;
 
    EXIT;
 }
@@ -171,8 +194,11 @@ push_aps_message_set_alert (PushApsMessage *message,
                             const gchar    *alert)
 {
    g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+
    g_free(message->priv->alert);
    message->priv->alert = g_strdup(alert);
+   g_free(message->priv->json);
+   message->priv->json = NULL;
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_ALERT]);
 }
 
@@ -181,7 +207,10 @@ push_aps_message_set_badge (PushApsMessage *message,
                             guint           badge)
 {
    g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+
    message->priv->badge = badge;
+   g_free(message->priv->json);
+   message->priv->json = NULL;
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_BADGE]);
 }
 
@@ -190,8 +219,11 @@ push_aps_message_set_sound (PushApsMessage *message,
                             const gchar    *sound)
 {
    g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+
    g_free(message->priv->sound);
    message->priv->sound = g_strdup(sound);
+   g_free(message->priv->json);
+   message->priv->json = NULL;
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_SOUND]);
 }
 
@@ -209,6 +241,9 @@ push_aps_message_finalize (GObject *object)
 
    g_free(priv->sound);
    priv->sound = NULL;
+
+   g_free(priv->json);
+   priv->json = NULL;
 
    if (priv->extra) {
       g_hash_table_unref(priv->extra);
@@ -234,6 +269,9 @@ push_aps_message_get_property (GObject    *object,
       break;
    case PROP_BADGE:
       g_value_set_uint(value, push_aps_message_get_badge(message));
+      break;
+   case PROP_JSON:
+      g_value_set_string(value, push_aps_message_get_json(message));
       break;
    case PROP_SOUND:
       g_value_set_string(value, push_aps_message_get_sound(message));
@@ -298,6 +336,15 @@ push_aps_message_class_init (PushApsMessageClass *klass)
                         G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_BADGE,
                                    gParamSpecs[PROP_BADGE]);
+
+   gParamSpecs[PROP_JSON] =
+      g_param_spec_string("json",
+                          _("JSON"),
+                          _("The message as a JSON encoded string."),
+                          NULL,
+                          G_PARAM_READABLE);
+   g_object_class_install_property(object_class, PROP_JSON,
+                                   gParamSpecs[PROP_JSON]);
 
    gParamSpecs[PROP_SOUND] =
       g_param_spec_string("sound",
