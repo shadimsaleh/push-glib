@@ -40,7 +40,7 @@ typedef struct _PushApsClientClass   PushApsClientClass;
 typedef struct _PushApsClientPrivate PushApsClientPrivate;
 typedef enum   _PushApsClientMode    PushApsClientMode;
 
-enum
+enum _PushApsClientMode
 {
    PUSH_APS_CLIENT_PRODUCTION = 0,
    PUSH_APS_CLIENT_SANDBOX    = 1,

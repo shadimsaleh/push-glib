@@ -25,15 +25,17 @@ G_DEFINE_TYPE(PushApsClient, push_aps_client, G_TYPE_OBJECT)
 
 struct _PushApsClientPrivate
 {
-   gchar *ssl_cert_file;
-   gchar *ssl_key_file;
+   PushApsClientMode mode;
    GTlsCertificate *tls_certificate;
    GError *tls_error;
+   gchar *ssl_cert_file;
+   gchar *ssl_key_file;
 };
 
 enum
 {
    PROP_0,
+   PROP_MODE,
    PROP_SSL_CERT_FILE,
    PROP_SSL_KEY_FILE,
    PROP_TLS_CERTIFICATE,
@@ -135,6 +137,23 @@ push_aps_client_deliver_finish (PushApsClient  *client,
    }
 
    RETURN(ret);
+}
+
+PushApsClientMode
+push_aps_client_get_mode (PushApsClient *client)
+{
+   g_return_val_if_fail(PUSH_IS_APS_CLIENT(client), 0);
+   return client->priv->mode;
+}
+
+static void
+push_aps_client_set_mode (PushApsClient     *client,
+                          PushApsClientMode  mode)
+{
+   g_return_if_fail(PUSH_IS_APS_CLIENT(client));
+   g_return_if_fail((mode == PUSH_APS_CLIENT_PRODUCTION) ||
+                    (mode == PUSH_APS_CLIENT_SANDBOX));
+   client->priv->mode = mode;
 }
 
 /**
@@ -276,6 +295,9 @@ push_aps_client_get_property (GObject    *object,
    PushApsClient *client = PUSH_APS_CLIENT(object);
 
    switch (prop_id) {
+   case PROP_MODE:
+      g_value_set_enum(value, push_aps_client_get_mode(client));
+      break;
    case PROP_SSL_CERT_FILE:
       g_value_set_string(value, push_aps_client_get_ssl_cert_file(client));
       break;
@@ -299,6 +321,9 @@ push_aps_client_set_property (GObject      *object,
    PushApsClient *client = PUSH_APS_CLIENT(object);
 
    switch (prop_id) {
+   case PROP_MODE:
+      push_aps_client_set_mode(client, g_value_get_enum(value));
+      break;
    case PROP_SSL_CERT_FILE:
       push_aps_client_set_ssl_cert_file(client, g_value_get_string(value));
       break;
@@ -325,6 +350,16 @@ push_aps_client_class_init (PushApsClientClass *klass)
    object_class->get_property = push_aps_client_get_property;
    object_class->set_property = push_aps_client_set_property;
    g_type_class_add_private(object_class, sizeof(PushApsClientPrivate));
+
+   gParamSpecs[PROP_MODE] =
+      g_param_spec_enum("mode",
+                        _("Mode"),
+                        _("The mode of the client."),
+                        PUSH_TYPE_APS_CLIENT_MODE,
+                        PUSH_APS_CLIENT_PRODUCTION,
+                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_MODE,
+                                   gParamSpecs[PROP_MODE]);
 
    gParamSpecs[PROP_SSL_CERT_FILE] =
       g_param_spec_string("ssl-cert-file",
@@ -374,6 +409,7 @@ push_aps_client_init (PushApsClient *client)
    client->priv = G_TYPE_INSTANCE_GET_PRIVATE(client,
                                               PUSH_TYPE_APS_CLIENT,
                                               PushApsClientPrivate);
+   client->priv->mode = PUSH_APS_CLIENT_PRODUCTION;
    EXIT;
 }
 
