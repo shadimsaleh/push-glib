@@ -96,7 +96,9 @@ push_c2dm_client_deliver_async (PushC2dmClient      *client,
                                 GAsyncReadyCallback  callback,
                                 gpointer             user_data)
 {
+   PushC2dmClientPrivate *priv;
    GSimpleAsyncResult *simple;
+   const gchar *auth_header;
    const gchar *registration_id;
    SoupMessage *request;
    GHashTable *params;
@@ -109,6 +111,8 @@ push_c2dm_client_deliver_async (PushC2dmClient      *client,
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
+   priv = client->priv;
+
    registration_id = push_c2dm_identity_get_registration_id(identity);
    params = push_c2dm_message_build_params(message);
    g_hash_table_insert(params,
@@ -117,6 +121,10 @@ push_c2dm_client_deliver_async (PushC2dmClient      *client,
    request = soup_form_request_new_from_hash(SOUP_METHOD_POST,
                                              PUSH_C2DM_CLIENT_URL,
                                              params);
+   auth_header = g_strdup_printf("GoogleLogin auth=%s", priv->auth_token);
+   soup_message_headers_append(request->request_headers,
+                               "Authorization",
+                               auth_header);
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_c2dm_client_deliver_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
