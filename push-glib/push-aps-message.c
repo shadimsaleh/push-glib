@@ -42,6 +42,62 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+gchar *
+push_aps_message_to_json (PushApsMessage *message)
+{
+   PushApsMessagePrivate *priv;
+   GHashTableIter iter;
+   JsonGenerator *json;
+   JsonObject *obj;
+   JsonObject *aps;
+   JsonNode *root;
+   gpointer key;
+   gpointer value;
+   gchar *ret = NULL;
+
+   ENTRY;
+
+   g_return_val_if_fail(PUSH_IS_APS_MESSAGE(message), NULL);
+
+   priv = message->priv;
+
+   json = json_generator_new();
+
+   root = json_node_new(JSON_NODE_OBJECT);
+   obj = json_object_new();
+   json_node_take_object(root, obj);
+
+   if (priv->extra) {
+      g_hash_table_iter_init(&iter, priv->extra);
+      while (g_hash_table_iter_next(&iter, &key, &value)) {
+         json_object_set_member(obj, key, json_node_copy(value));
+      }
+   }
+
+   aps = json_object_new();
+   json_object_set_object_member(obj, "aps", aps);
+
+   if (priv->alert) {
+      json_object_set_string_member(aps, "alert", priv->alert);
+   }
+
+   if (priv->badge || (!priv->alert && !priv->sound)) {
+      json_object_set_int_member(aps, "badge", priv->badge);
+   }
+
+   if (priv->sound) {
+      json_object_set_string_member(aps, "sound", priv->sound);
+   }
+
+   json_generator_set_root(json, root);
+   ret = json_generator_to_data(json, NULL);
+
+   json_node_free(root);
+   g_object_unref(json);
+
+   RETURN(ret);
+}
+
 void
 push_aps_message_add_extra (PushApsMessage *message,
                             const gchar    *key,

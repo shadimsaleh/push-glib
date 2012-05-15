@@ -62,6 +62,7 @@ void         push_aps_message_set_badge (PushApsMessage *message,
                                          guint           badge);
 void         push_aps_message_set_sound (PushApsMessage *message,
                                          const gchar    *sound);
+gchar       *push_aps_message_to_json   (PushApsMessage *message);
 
 G_END_DECLS
 
