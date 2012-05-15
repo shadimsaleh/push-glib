@@ -51,6 +51,7 @@ struct _PushC2dmMessageClass
 void             push_c2dm_message_add_param            (PushC2dmMessage *message,
                                                          const gchar     *param,
                                                          const gchar     *value);
+GHashTable      *push_c2dm_message_build_params         (PushC2dmMessage *message);
 gboolean         push_c2dm_message_get_delay_while_idle (PushC2dmMessage *message);
 const gchar     *push_c2dm_message_get_collapse_key     (PushC2dmMessage *message);
 GType            push_c2dm_message_get_type             (void) G_GNUC_CONST;

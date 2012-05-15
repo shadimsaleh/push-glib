@@ -55,29 +55,42 @@ push_c2dm_message_new (void)
 }
 
 /**
- * push_c2dm_message_get_params:
+ * push_c2dm_message_build_params:
  * @message: (in): A #PushC2dmMessage.
  *
- * Retrieves additional parameters that for the #PushC2dmMessage. These
- * get encoded as "data.param" parameters to the C2DM HTTP endpoint.
+ * Build the hashtable of parameters to be sent to the C2DM endpoint.
  *
- * Returns: (transfer none) (element-type gchar* gchar*): A #GHashTable.
+ * Returns: (transfer full) (element-type utf8 utf8): The params for the request.
+ * The hashtable should be freed with g_hash_table_unref.
  */
 GHashTable *
-push_c2dm_message_get_params (PushC2dmMessage *message)
+push_c2dm_message_build_params (PushC2dmMessage *message)
 {
    PushC2dmMessagePrivate *priv;
+   GHashTableIter iter;
+   GHashTable *params;
+   gpointer key;
+   gpointer value;
+
+   ENTRY;
 
    g_return_val_if_fail(PUSH_IS_C2DM_MESSAGE(message), NULL);
 
    priv = message->priv;
 
-   if (!priv->params) {
-      priv->params =
-         g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+   params = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+   g_hash_table_insert(params,
+                       g_strdup("collapse_key"),
+                       g_strdup(priv->collapse_key));
+   g_hash_table_insert(params,
+                       g_strdup("delay_while_idle"),
+                       g_strdup(priv->delay_while_idle ? "1" : ""));
+   g_hash_table_iter_init(&iter, priv->params);
+   while (g_hash_table_iter_next(&iter, &key, &value)) {
+      g_hash_table_insert(params, g_strdup(key), g_strdup(value));
    }
 
-   return priv->params;
+   RETURN(params);
 }
 
 /**
@@ -94,15 +107,25 @@ push_c2dm_message_add_param (PushC2dmMessage *message,
                              const gchar     *param,
                              const gchar     *value)
 {
-   GHashTable *params;
+   PushC2dmMessagePrivate *priv;
 
    ENTRY;
 
    g_return_if_fail(PUSH_IS_C2DM_MESSAGE(message));
    g_return_if_fail(param);
 
-   params = push_c2dm_message_get_params(message);
-   g_hash_table_insert(params, g_strdup(param), g_strdup(value ? value : ""));
+   priv = message->priv;
+
+   if (!priv->params) {
+      priv->params = g_hash_table_new_full(g_str_hash,
+                                           g_str_equal,
+                                           g_free,
+                                           g_free);
+   }
+
+   g_hash_table_insert(priv->params,
+                       g_strdup_printf("data.%s", param),
+                       g_strdup(value ? value : ""));
 
    EXIT;
 }

@@ -21,6 +21,8 @@
 #include "push-c2dm-client.h"
 #include "push-debug.h"
 
+#define PUSH_C2DM_CLIENT_URL "https://android.apis.google.com/c2dm/send"
+
 G_DEFINE_TYPE(PushC2dmClient, push_c2dm_client, SOUP_TYPE_SESSION_ASYNC)
 
 struct _PushC2dmClientPrivate
@@ -54,6 +56,98 @@ push_c2dm_client_set_auth_token (PushC2dmClient *client,
    client->priv->auth_token = g_strdup(auth_token);
    g_object_notify_by_pspec(G_OBJECT(client), gParamSpecs[PROP_AUTH_TOKEN]);
    EXIT;
+}
+
+static void
+push_c2dm_client_message_cb (SoupSession *session,
+                             SoupMessage *message,
+                             gpointer     user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   PushC2dmClient *client = (PushC2dmClient *)session;
+
+   ENTRY;
+
+   g_return_if_fail(PUSH_IS_C2DM_CLIENT(client));
+   g_return_if_fail(SOUP_IS_MESSAGE(message));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (SOUP_STATUS_IS_SUCCESSFUL(message->status_code)) {
+      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+   } else {
+      g_simple_async_result_set_error(simple,
+                                      PUSH_C2DM_CLIENT_ERROR,
+                                      PUSH_C2DM_CLIENT_ERROR_REQUEST_FAILED,
+                                      _("C2DM request failed with code: %u"),
+                                      message->status_code);
+   }
+
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+void
+push_c2dm_client_deliver_async (PushC2dmClient      *client,
+                                PushC2dmIdentity    *identity,
+                                PushC2dmMessage     *message,
+                                GCancellable        *cancellable,
+                                GAsyncReadyCallback  callback,
+                                gpointer             user_data)
+{
+   GSimpleAsyncResult *simple;
+   const gchar *registration_id;
+   SoupMessage *request;
+   GHashTable *params;
+
+   ENTRY;
+
+   g_return_if_fail(PUSH_IS_C2DM_CLIENT(client));
+   g_return_if_fail(PUSH_IS_C2DM_IDENTITY(identity));
+   g_return_if_fail(PUSH_IS_C2DM_MESSAGE(message));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(callback);
+
+   registration_id = push_c2dm_identity_get_registration_id(identity);
+   params = push_c2dm_message_build_params(message);
+   g_hash_table_insert(params,
+                       g_strdup("registration_id"),
+                       g_strdup(registration_id));
+   request = soup_form_request_new_from_hash(SOUP_METHOD_POST,
+                                             PUSH_C2DM_CLIENT_URL,
+                                             params);
+   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
+                                      push_c2dm_client_deliver_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+   soup_session_queue_message(SOUP_SESSION(client),
+                              request,
+                              push_c2dm_client_message_cb,
+                              simple);
+   g_object_unref(request);
+   g_hash_table_unref(params);
+
+   EXIT;
+}
+
+gboolean
+push_c2dm_client_deliver_finish (PushC2dmClient  *client,
+                                 GAsyncResult    *result,
+                                 GError         **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   gboolean ret;
+
+   ENTRY;
+
+   g_return_val_if_fail(PUSH_IS_C2DM_CLIENT(client), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+
+   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   }
+
+   RETURN(ret);
 }
 
 static void
@@ -139,4 +233,10 @@ push_c2dm_client_init (PushC2dmClient *client)
                                               PUSH_TYPE_C2DM_CLIENT,
                                               PushC2dmClientPrivate);
    EXIT;
+}
+
+GQuark
+push_c2dm_client_error_quark (void)
+{
+   return g_quark_from_static_string("psuh-c2dm-client-error-quark");
 }

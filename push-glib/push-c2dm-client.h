@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 #define PUSH_TYPE_C2DM_CLIENT            (push_c2dm_client_get_type())
+#define PUSH_C2DM_CLIENT_ERROR           (push_c2dm_client_error_quark())
 #define PUSH_C2DM_CLIENT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), PUSH_TYPE_C2DM_CLIENT, PushC2dmClient))
 #define PUSH_C2DM_CLIENT_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), PUSH_TYPE_C2DM_CLIENT, PushC2dmClient const))
 #define PUSH_C2DM_CLIENT_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  PUSH_TYPE_C2DM_CLIENT, PushC2dmClientClass))
@@ -38,6 +39,12 @@ G_BEGIN_DECLS
 typedef struct _PushC2dmClient        PushC2dmClient;
 typedef struct _PushC2dmClientClass   PushC2dmClientClass;
 typedef struct _PushC2dmClientPrivate PushC2dmClientPrivate;
+typedef enum   _PushC2dmClientError   PushC2dmClientError;
+
+enum _PushC2dmClientError
+{
+   PUSH_C2DM_CLIENT_ERROR_REQUEST_FAILED = 1,
+};
 
 struct _PushC2dmClient
 {
@@ -52,10 +59,12 @@ struct _PushC2dmClientClass
    SoupSessionAsyncClass parent_class;
 };
 
+GQuark   push_c2dm_client_error_quark    (void) G_GNUC_CONST;
 GType    push_c2dm_client_get_type       (void) G_GNUC_CONST;
 void     push_c2dm_client_deliver_async  (PushC2dmClient       *client,
                                           PushC2dmIdentity     *identity,
                                           PushC2dmMessage      *message,
+                                          GCancellable         *cancellable,
                                           GAsyncReadyCallback   callback,
                                           gpointer              user_data);
 gboolean push_c2dm_client_deliver_finish (PushC2dmClient       *client,
