@@ -20,14 +20,15 @@
 #include <libsoup/soup.h>
 
 #include "push-c2dm-message.h"
+#include "push-debug.h"
 
 G_DEFINE_TYPE(PushC2dmMessage, push_c2dm_message, G_TYPE_OBJECT)
 
 struct _PushC2dmMessagePrivate
 {
-   GHashTable *params;
    gchar *collapse_key;
    gboolean delay_while_idle;
+   GHashTable *params;
 };
 
 enum
@@ -95,11 +96,15 @@ push_c2dm_message_add_param (PushC2dmMessage *message,
 {
    GHashTable *params;
 
+   ENTRY;
+
    g_return_if_fail(PUSH_IS_C2DM_MESSAGE(message));
    g_return_if_fail(param);
 
    params = push_c2dm_message_get_params(message);
    g_hash_table_insert(params, g_strdup(param), g_strdup(value ? value : ""));
+
+   EXIT;
 }
 
 /**
@@ -131,11 +136,13 @@ void
 push_c2dm_message_set_collapse_key (PushC2dmMessage *message,
                                     const gchar     *collapse_key)
 {
+   ENTRY;
    g_return_if_fail(PUSH_IS_C2DM_MESSAGE(message));
    g_free(message->priv->collapse_key);
    message->priv->collapse_key = g_strdup(collapse_key);
    g_object_notify_by_pspec(G_OBJECT(message),
                             gParamSpecs[PROP_COLLAPSE_KEY]);
+   EXIT;
 }
 
 /**
@@ -167,16 +174,22 @@ void
 push_c2dm_message_set_delay_while_idle (PushC2dmMessage *message,
                                         gboolean         delay_while_idle)
 {
+   ENTRY;
    g_return_if_fail(PUSH_IS_C2DM_MESSAGE(message));
    message->priv->delay_while_idle = delay_while_idle;
    g_object_notify_by_pspec(G_OBJECT(message),
                             gParamSpecs[PROP_DELAY_WHILE_IDLE]);
+   EXIT;
 }
 
 static void
 push_c2dm_message_finalize (GObject *object)
 {
-   PushC2dmMessagePrivate *priv = PUSH_C2DM_MESSAGE(object)->priv;
+   PushC2dmMessagePrivate *priv;
+
+   ENTRY;
+
+   priv = PUSH_C2DM_MESSAGE(object)->priv;
 
    if (priv->params) {
       g_hash_table_unref(priv->params);
@@ -186,6 +199,8 @@ push_c2dm_message_finalize (GObject *object)
    g_free(priv->collapse_key);
 
    G_OBJECT_CLASS(push_c2dm_message_parent_class)->finalize(object);
+
+   EXIT;
 }
 
 static void
@@ -237,6 +252,8 @@ push_c2dm_message_class_init (PushC2dmMessageClass *klass)
 {
    GObjectClass *object_class;
 
+   ENTRY;
+
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = push_c2dm_message_finalize;
    object_class->get_property = push_c2dm_message_get_property;
@@ -278,12 +295,16 @@ push_c2dm_message_class_init (PushC2dmMessageClass *klass)
                           G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_DELAY_WHILE_IDLE,
                                    gParamSpecs[PROP_DELAY_WHILE_IDLE]);
+
+   EXIT;
 }
 
 static void
 push_c2dm_message_init (PushC2dmMessage *message)
 {
+   ENTRY;
    message->priv = G_TYPE_INSTANCE_GET_PRIVATE(message,
                                                PUSH_TYPE_C2DM_MESSAGE,
                                                PushC2dmMessagePrivate);
+   EXIT;
 }
