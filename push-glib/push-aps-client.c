@@ -51,6 +51,66 @@ static guint       gSignals[LAST_SIGNAL];
 
 static void push_aps_client_try_load_tls (PushApsClient *client);
 
+void
+push_aps_client_deliver_async (PushApsClient       *client,
+                               PushApsIdentity     *identity,
+                               PushApsMessage      *message,
+                               GCancellable        *cancellable,
+                               GAsyncReadyCallback  callback,
+                               gpointer             user_data)
+{
+   PushApsClientPrivate *priv;
+   GSimpleAsyncResult *simple;
+
+   ENTRY;
+
+   g_return_if_fail(PUSH_IS_APS_CLIENT(client));
+   g_return_if_fail(PUSH_IS_APS_IDENTITY(identity));
+   g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+
+   priv = client->priv;
+
+   if (priv->tls_error) {
+      g_simple_async_report_gerror_in_idle(G_OBJECT(client),
+                                           callback,
+                                           user_data,
+                                           priv->tls_error);
+      EXIT;
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
+                                      push_aps_client_deliver_async);
+
+   /*
+    * TODO: Write request to the outgoing tls connection.
+    */
+
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+gboolean
+push_aps_client_deliver_finish (PushApsClient  *client,
+                                GAsyncResult   *result,
+                                GError        **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   gboolean ret;
+
+   ENTRY;
+
+   g_return_val_if_fail(PUSH_IS_APS_CLIENT(client), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+
+   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   }
+
+   RETURN(ret);
+}
+
 const gchar *
 push_aps_client_get_ssl_cert_file (PushApsClient *client)
 {
