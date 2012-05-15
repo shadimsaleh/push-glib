@@ -37,7 +37,14 @@ enum
    LAST_PROP
 };
 
+enum
+{
+   IDENTITY_REMOVED,
+   LAST_SIGNAL
+};
+
 static GParamSpec *gParamSpecs[LAST_PROP];
+static guint       gSignals[LAST_SIGNAL];
 
 /**
  * push_c2dm_client_get_auth_token:
@@ -320,6 +327,17 @@ push_c2dm_client_class_init (PushC2dmClientClass *klass)
                           G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_AUTH_TOKEN,
                                    gParamSpecs[PROP_AUTH_TOKEN]);
+
+   gSignals[IDENTITY_REMOVED] = g_signal_new("identity-removed",
+                                             PUSH_TYPE_C2DM_CLIENT,
+                                             G_SIGNAL_RUN_FIRST,
+                                             0,
+                                             NULL,
+                                             NULL,
+                                             g_cclosure_marshal_VOID__OBJECT,
+                                             G_TYPE_NONE,
+                                             1,
+                                             PUSH_TYPE_C2DM_IDENTITY);
 
    EXIT;
 }
