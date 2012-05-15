@@ -8,4 +8,4 @@ Description: Push Notifications for GLib
 Version: @VERSION@
 Libs: -L${libdir} -lpush-glib-1.0
 Cflags: -I${includedir}/push-glib-1.0
-Requires: gio-2.0
+Requires: gio-2.0 libsoup-2.4 json-glib-1.0

@@ -60,6 +60,7 @@ dnl Check for Required Modules
 dnl **************************************************************************
 PKG_CHECK_MODULES(GIO,     [gio-2.0 >= 2.26])
 PKG_CHECK_MODULES(GOBJECT, [gobject-2.0 >= 2.26])
+PKG_CHECK_MODULES(JSON,    [json-glib-1.0 >= 0.14])
 PKG_CHECK_MODULES(SOUP,    [libsoup-2.4 >= 2.32])
 
 

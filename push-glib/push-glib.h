@@ -25,6 +25,9 @@ G_BEGIN_DECLS
 
 #define PUSH_INSIDE
 
+#include "push-glib/push-aps-client.h"
+#include "push-glib/push-aps-identity.h"
+#include "push-glib/push-aps-message.h"
 #include "push-glib/push-c2dm-client.h"
 #include "push-glib/push-c2dm-identity.h"
 #include "push-glib/push-c2dm-message.h"
