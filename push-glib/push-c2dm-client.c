@@ -39,6 +39,15 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * push_c2dm_client_get_auth_token:
+ * @client: (in): A #PushC2dmClient.
+ *
+ * Retrieves the "auth-token" property. The "auth-token" is used when sending
+ * requests to Google using the "Authorization:" header as required by C2DM.
+ *
+ * Returns: A string containing the "auth-token".
+ */
 const gchar *
 push_c2dm_client_get_auth_token (PushC2dmClient *client)
 {
@@ -46,6 +55,15 @@ push_c2dm_client_get_auth_token (PushC2dmClient *client)
    return client->priv->auth_token;
 }
 
+/**
+ * push_c2dm_client_set_auth_token:
+ * @client: (in): A #PushC2dmClient.
+ * @auth_token: (in): A string.
+ *
+ * Sets the "auth-token" property. This should be a Google ClientLogin style
+ * auth token that may be used in the "Authorization:" header of an HTTP
+ * request.
+ */
 void
 push_c2dm_client_set_auth_token (PushC2dmClient *client,
                                  const gchar    *auth_token)
@@ -132,6 +150,19 @@ failure:
    EXIT;
 }
 
+/**
+ * push_c2dm_client_deliver_async:
+ * @client: A #PushC2dmClient.
+ * @identity: A #PushC2dmIdentity.
+ * @message: A #PushC2dmMessage.
+ * @cancellable: (allow-none): A #GCancellable, or %NULL.
+ * @callback: A callback to execute upon completion.
+ * @user_data: User data for @callback.
+ *
+ * Requests that @message is pushed to the device identified by @identity.
+ * Upon completion, @callback will be executed and is expected to call
+ * push_c2dm_client_deliver_finish() to retrieve the result.
+ */
 void
 push_c2dm_client_deliver_async (PushC2dmClient      *client,
                                 PushC2dmIdentity    *identity,
@@ -181,6 +212,23 @@ push_c2dm_client_deliver_async (PushC2dmClient      *client,
    EXIT;
 }
 
+/**
+ * push_c2dm_client_deliver_finish:
+ * @client: A #PushC2dmClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes a request to push_c2dm_client_deliver_async(). If successful,
+ * %TRUE is returned. Otherwise, %FALSE is returned and @error is set to
+ * the error code representing the remote failure.
+ *
+ * Callers may want to check the error domain and code of an error to
+ * determine if they should remove the device from their records. Such
+ * an error may happen if the device has unregistered from push notifications
+ * but you have not yet been notified.
+ *
+ * Returns: %TRUE if successful.
+ */
 gboolean
 push_c2dm_client_deliver_finish (PushC2dmClient  *client,
                                  GAsyncResult    *result,

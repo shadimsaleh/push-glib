@@ -37,6 +37,15 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * push_c2dm_identity_get_registration_id:
+ * @identity: (in): A #PushC2dmIdentity.
+ *
+ * Fetches the "registration-id" property. The registration id is provided
+ * by a device that has registered with the C2DM service.
+ *
+ * Returns: A string containing the registration id.
+ */
 const gchar *
 push_c2dm_identity_get_registration_id (PushC2dmIdentity *identity)
 {
@@ -44,6 +53,13 @@ push_c2dm_identity_get_registration_id (PushC2dmIdentity *identity)
    return identity->priv->registration_id;
 }
 
+/**
+ * push_c2dm_identity_set_registration_id:
+ * @identity: (in): A #PushC2dmIdentity.
+ *
+ * Sets the "registration-id" property. The registration id is provided
+ * by a device that has registered with the C2DM service.
+ */
 void
 push_c2dm_identity_set_registration_id (PushC2dmIdentity *identity,
                                         const gchar      *registration_id)
