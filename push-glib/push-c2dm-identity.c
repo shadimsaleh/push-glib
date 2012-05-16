@@ -82,6 +82,7 @@ push_c2dm_identity_get_registration_id (PushC2dmIdentity *identity)
 /**
  * push_c2dm_identity_set_registration_id:
  * @identity: (in): A #PushC2dmIdentity.
+ * @registration_id: A string containing the registration_id.
  *
  * Sets the "registration-id" property. The registration id is provided
  * by a device that has registered with the C2DM service.

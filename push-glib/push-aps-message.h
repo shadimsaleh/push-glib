@@ -51,7 +51,7 @@ struct _PushApsMessageClass
 
 void         push_aps_message_add_extra        (PushApsMessage *message,
                                                 const gchar    *key,
-                                                JsonNode       *node);
+                                                JsonNode       *value);
 void         push_aps_message_add_extra_string (PushApsMessage *message,
                                                 const gchar    *key,
                                                 const gchar    *value);

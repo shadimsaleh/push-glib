@@ -80,6 +80,7 @@ push_aps_identity_get_device_token (PushApsIdentity *identity)
 /**
  * push_aps_identity_set_device_token:
  * @identity: (in): A #PushApsIdentity.
+ * @device_token: The "device-token".
  *
  * Sets the "device-token" property.
  */
