@@ -208,7 +208,8 @@ push_aps_client_connect_finish (PushApsClient  *client,
 static GByteArray *
 push_aps_client_encode (PushApsClient *client,
                         const gchar   *device_token,
-                        const gchar   *message)
+                        const gchar   *message,
+                        guint32        request_id)
 {
    GByteArray *ret = NULL;
    guint32 b32;
@@ -234,7 +235,7 @@ push_aps_client_encode (PushApsClient *client,
    /*
     * Identifier.
     */
-   b32 = GUINT32_TO_BE(++client->priv->last_id);
+   b32 = GUINT32_TO_BE(request_id);
    g_byte_array_append(ret, (guint8 *)&b32, 4);
 
    /*
@@ -292,6 +293,7 @@ push_aps_client_deliver_async (PushApsClient       *client,
    GSimpleAsyncResult *simple;
    GOutputStream *stream;
    GByteArray *buffer;
+   guint32 *request_id;
    GError *error = NULL;
    gsize bytes_written;
 
@@ -328,9 +330,14 @@ push_aps_client_deliver_async (PushApsClient       *client,
                                       push_aps_client_deliver_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
 
+   request_id = g_new0(guint32, 1);
+   *request_id = ++priv->last_id;
    buffer = push_aps_client_encode(client,
                                    push_aps_identity_get_device_token(identity),
-                                   push_aps_message_get_json(message));
+                                   push_aps_message_get_json(message),
+                                   *request_id);
+
+   g_hash_table_insert(priv->results, request_id, simple);
 
    stream = g_io_stream_get_output_stream(priv->gateway_stream);
    if (!g_output_stream_write_all(stream,
@@ -343,8 +350,6 @@ push_aps_client_deliver_async (PushApsClient       *client,
    }
 
    g_byte_array_free(buffer, TRUE);
-   g_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
 
    EXIT;
 }
