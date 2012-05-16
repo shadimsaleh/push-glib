@@ -288,6 +288,24 @@ push_aps_client_connect_event_cb (GSocketClient      *socket_client,
    EXIT;
 }
 
+/**
+ * push_aps_client_connect_async:
+ * @client: (in): A #PushApsClient.
+ * @cancellable: (allow-none): A #GCancellable, or %NULL.
+ * @callback: A callback to execute.
+ * @user_data: User data for @callback.
+ *
+ * Asynchronously connects to the Apple Push Notification gateway. A TLS
+ * connection is used using the TLS certificate provided. This will have
+ * been loaded using the "ssl-cert-file" and "ssl-key-file" properties
+ * or the "tls-certificate" property.
+ *
+ * Upon success or error, @callback will be executed and should call
+ * push_aps_client_connect_finish() to comlete the request.
+ *
+ * If "mode" is set to PUSH_APS_CLIENT_SANDBOX, then the client will connect
+ * to "gateway.sandbox.push.apple.com" instead of "gateway.push.apple.com".
+ */
 void
 push_aps_client_connect_async (PushApsClient       *client,
                                GCancellable        *cancellable,
@@ -362,6 +380,16 @@ push_aps_client_connect_async (PushApsClient       *client,
    EXIT;
 }
 
+/**
+ * push_aps_client_finish:
+ * @client: (in): A #PushApsClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to connect to the APS gateway.
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 push_aps_client_connect_finish (PushApsClient  *client,
                                 GAsyncResult   *result,
