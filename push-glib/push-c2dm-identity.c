@@ -21,6 +21,16 @@
 #include "push-c2dm-identity.h"
 #include "push-debug.h"
 
+/**
+ * SECTION:push-c2dm-identity
+ * @title: PushC2dmIdentity
+ * @short_description: A C2DM device that can be notified.
+ *
+ * PushC2dmIdentity represents a C2DM registered device that can be
+ * notified using #PushC2dmClient. It contains the "registration-id"
+ * provided by Android's C2DM intent.
+ */
+
 G_DEFINE_TYPE(PushC2dmIdentity, push_c2dm_identity, G_TYPE_OBJECT)
 
 struct _PushC2dmIdentityPrivate
@@ -37,6 +47,14 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * push_c2dm_identity_new:
+ * @registration_id: (allow-none): The registration_id.
+ *
+ * Creates a new #PushC2dmIdentity.
+ *
+ * Returns: (transfer full): A #PushC2dmIdentity.
+ */
 PushC2dmIdentity *
 push_c2dm_identity_new (const gchar *registration_id)
 {
