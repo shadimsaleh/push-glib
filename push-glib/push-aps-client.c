@@ -21,6 +21,21 @@
 #include "push-aps-client.h"
 #include "push-debug.h"
 
+/**
+ * SECTION:push-aps-client
+ * @title: PushApsClient
+ * @short_description: Send notification to iOS devices.
+ *
+ * #PushApsClient provides a convenient way to send notifications to Apple
+ * iOS device. Simply create an instance of the client with your TLS
+ * credentials registered with the App Store, connect, and then use
+ * push_aps_client_deliver_async() to deliver notifications.
+ *
+ * It is important that consumers connect to the "identity-removed" signal
+ * so that they may remove devices that are no longer valid. Failure to do
+ * so may cause Apple to revoke your access to APS for a period of time.
+ */
+
 G_DEFINE_TYPE(PushApsClient, push_aps_client, G_TYPE_OBJECT)
 
 struct _PushApsClientPrivate
