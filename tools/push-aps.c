@@ -58,16 +58,58 @@ deliver_cb (GObject      *object,
    }
 }
 
+static void
+connect_cb (GObject      *object,
+            GAsyncResult *result,
+            gpointer      user_data)
+{
+   PushApsIdentity *identity;
+   PushApsMessage *message;
+   PushApsClient *client = (PushApsClient *)object;
+   GError *error = NULL;
+   guint i;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+   g_assert(G_IS_ASYNC_RESULT(result));
+
+   if (!push_aps_client_connect_finish(client, result, &error)) {
+      g_printerr("ERROR: %s\n", error->message);
+      g_error_free(error);
+      g_main_loop_quit(gMainLoop);
+      return;
+   }
+
+   message = g_object_new(PUSH_TYPE_APS_MESSAGE,
+                          NULL);
+   push_aps_message_add_extra_string(message,
+                                     "collapse_key",
+                                     gCollapseKey);
+
+   gToSend = g_strv_length(gDeviceTokens);
+
+   for (i = 0; gDeviceTokens[i]; i++) {
+      identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
+                              "device-token", gDeviceTokens[i],
+                              NULL);
+      push_aps_client_deliver_async(client,
+                                    identity,
+                                    message,
+                                    NULL,
+                                    deliver_cb,
+                                    NULL);
+      g_object_unref(identity);
+   }
+
+   g_object_unref(message);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
 {
-   PushApsIdentity *identity;
-   PushApsMessage *message;
    GOptionContext *context;
    PushApsClient *client;
    GError *error = NULL;
-   guint i;
 
    g_set_prgname("push-aps");
    g_set_application_name(_("Push APS"));
@@ -94,24 +136,10 @@ main (gint   argc,
                          "ssl-key-file", gKeyFile,
                          NULL);
 
-   message = g_object_new(PUSH_TYPE_APS_MESSAGE,
-                          NULL);
-   push_aps_message_add_extra_string(message, "collapse_key", gCollapseKey);
-
-   gToSend = g_strv_length(gDeviceTokens);
-
-   for (i = 0; gDeviceTokens[i]; i++) {
-      identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
-                              "device-token", gDeviceTokens[i],
-                              NULL);
-      push_aps_client_deliver_async(client,
-                                    identity,
-                                    message,
-                                    NULL,
-                                    deliver_cb,
-                                    NULL);
-      g_object_unref(identity);
-   }
+   push_aps_client_connect_async(client,
+                                 NULL,
+                                 connect_cb,
+                                 NULL);
 
    g_main_loop_run(gMainLoop);
 
