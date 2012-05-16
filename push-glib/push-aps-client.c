@@ -103,6 +103,8 @@ push_aps_client_dispatch_error (PushApsClient      *client,
 {
    PushApsClientPrivate *priv;
    GSimpleAsyncResult *simple;
+   PushApsIdentity *identity;
+   const gchar *device_token;
 
    ENTRY;
 
@@ -111,6 +113,17 @@ push_aps_client_dispatch_error (PushApsClient      *client,
    priv = client->priv;
 
    if ((simple = g_hash_table_lookup(priv->results, &result_id))) {
+      if (code == PUSH_APS_CLIENT_ERROR_INVALID_TOKEN) {
+         device_token = g_object_get_data(G_OBJECT(simple), "device-token");
+         if (device_token) {
+            identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
+                                    "device-token", device_token,
+                                    NULL);
+            g_signal_emit(client, gSignals[IDENTITY_REMOVED], 0, identity);
+            g_object_unref(identity);
+         }
+      }
+
       g_simple_async_result_set_error(simple,
                                       PUSH_APS_CLIENT_ERROR,
                                       code,
@@ -441,6 +454,7 @@ push_aps_client_deliver_async (PushApsClient       *client,
    PushApsClientPrivate *priv;
    GSimpleAsyncResult *simple;
    GOutputStream *stream;
+   const gchar *device_token;
    GByteArray *buffer;
    guint32 *request_id;
    GError *error = NULL;
@@ -475,14 +489,18 @@ push_aps_client_deliver_async (PushApsClient       *client,
       EXIT;
    }
 
+   device_token = push_aps_identity_get_device_token(identity);
+
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_aps_client_deliver_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
+   g_object_set_data_full(G_OBJECT(simple), "device-token",
+                          g_strdup(device_token), g_free);
 
    request_id = g_new0(guint32, 1);
    *request_id = ++priv->last_id;
    buffer = push_aps_client_encode(client,
-                                   push_aps_identity_get_device_token(identity),
+                                   device_token,
                                    push_aps_message_get_json(message),
                                    *request_id);
 
