@@ -46,6 +46,7 @@ G_DEFINE_TYPE(PushApsMessage, push_aps_message, G_TYPE_OBJECT)
 struct _PushApsMessagePrivate
 {
    GHashTable *extra;
+   gboolean badge_set;
    gchar *alert;
    guint badge;
    gchar *sound;
@@ -113,7 +114,7 @@ push_aps_message_get_json (PushApsMessage *message)
    if (priv->alert) {
       json_object_set_string_member(aps, "alert", priv->alert);
    }
-   if (priv->badge || (!priv->alert && !priv->sound)) {
+   if (priv->badge_set || (!priv->alert && !priv->sound)) {
       json_object_set_int_member(aps, "badge", priv->badge);
    }
    if (priv->sound) {
@@ -276,6 +277,7 @@ push_aps_message_set_badge (PushApsMessage *message,
    g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
 
    message->priv->badge = badge;
+   message->priv->badge_set = TRUE;
    g_free(message->priv->json);
    message->priv->json = NULL;
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_BADGE]);
