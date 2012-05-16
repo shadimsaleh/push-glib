@@ -21,6 +21,15 @@
 #include "push-aps-identity.h"
 #include "push-debug.h"
 
+/**
+ * SECTION:push-aps-identity
+ * @title: PushApsIdentity
+ * @short_description: An identity for delivering notifcations to.
+ *
+ * #PushApsIdentity represents a device that can receive notifications
+ * via the Apple push gateway.
+ */
+
 G_DEFINE_TYPE(PushApsIdentity, push_aps_identity, G_TYPE_OBJECT)
 
 struct _PushApsIdentityPrivate
@@ -37,6 +46,14 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * push_aps_identity_new:
+ * @device_token: (allow-none): The APS device token as base64.
+ *
+ * Creates a new #PushApsIdentity for the device token.
+ *
+ * Returns: A newly allocated #PushApsIdentity.
+ */
 PushApsIdentity *
 push_aps_identity_new (const gchar *device_token)
 {
@@ -45,6 +62,14 @@ push_aps_identity_new (const gchar *device_token)
                        NULL);
 }
 
+/**
+ * push_aps_identity_get_device_token:
+ * @identity: (in): A #PushApsIdentity.
+ *
+ * Fetches the base64 encoded device token.
+ *
+ * Returns: A string which should not be modified or freed.
+ */
 const gchar *
 push_aps_identity_get_device_token (PushApsIdentity *identity)
 {
@@ -52,6 +77,12 @@ push_aps_identity_get_device_token (PushApsIdentity *identity)
    return identity->priv->device_token;
 }
 
+/**
+ * push_aps_identity_set_device_token:
+ * @identity: (in): A #PushApsIdentity.
+ *
+ * Sets the "device-token" property.
+ */
 void
 push_aps_identity_set_device_token (PushApsIdentity *identity,
                                     const gchar     *device_token)
