@@ -22,6 +22,26 @@
 #include "push-c2dm-message.h"
 #include "push-debug.h"
 
+/**
+ * SECTION:push-c2dm-message
+ * @title: PushC2dmMessage
+ * @short_description: A c2dm notification.
+ *
+ * #PushC2dmMessage represents a notification that can be delivered to
+ * a #PushC2dmIdentity using #PushC2dmClient. It can contain various
+ * key/value pairs as well as a few options that determine how the
+ * message is delivered.
+ *
+ * If "delay-while-idle" is %TRUE, then the message will not be delivered
+ * until the device has awoken from sleep.
+ *
+ * "collapse-key" should be set to an identifier that can be used to
+ * aggregate messages as a single message if multiple have been sent
+ * before the device has awoken. Note that if you send three messages
+ * with the same "collapse-key", it is likely that only the first will
+ * be delivered if the device was awake at time of delivery.
+ */
+
 G_DEFINE_TYPE(PushC2dmMessage, push_c2dm_message, G_TYPE_OBJECT)
 
 struct _PushC2dmMessagePrivate
