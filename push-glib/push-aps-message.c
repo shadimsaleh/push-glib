@@ -78,10 +78,8 @@ push_aps_message_get_json (PushApsMessage *message)
       RETURN(priv->json);
    }
 
-   json = json_generator_new();
-
-   root = json_node_new(JSON_NODE_OBJECT);
    obj = json_object_new();
+   root = json_node_new(JSON_NODE_OBJECT);
    json_node_take_object(root, obj);
 
    if (priv->extra) {
@@ -92,20 +90,18 @@ push_aps_message_get_json (PushApsMessage *message)
    }
 
    aps = json_object_new();
-   json_object_set_object_member(obj, "aps", aps);
-
    if (priv->alert) {
       json_object_set_string_member(aps, "alert", priv->alert);
    }
-
    if (priv->badge || (!priv->alert && !priv->sound)) {
       json_object_set_int_member(aps, "badge", priv->badge);
    }
-
    if (priv->sound) {
       json_object_set_string_member(aps, "sound", priv->sound);
    }
+   json_object_set_object_member(obj, "aps", aps);
 
+   json = json_generator_new();
    json_generator_set_root(json, root);
    ret = json_generator_to_data(json, NULL);
 
