@@ -111,10 +111,13 @@ push_c2dm_client_message_cb (SoupSession *session,
                              gpointer     user_data)
 {
    GSimpleAsyncResult *simple = user_data;
+   PushC2dmIdentity *identity;
    PushC2dmClient *client = (PushC2dmClient *)session;
    const guint8 *data;
    const gchar *code_str;
+   const gchar *registration_id;
    SoupBuffer *buffer;
+   gboolean removed = FALSE;
    gsize length;
    guint code;
 
@@ -147,15 +150,18 @@ push_c2dm_client_message_cb (SoupSession *session,
       } else if (g_str_equal(data, "Error=MissingRegistration")) {
          code = PUSH_C2DM_CLIENT_ERROR_MISSING_REGISTRATION;
          code_str = _("Missing registration.");
+         removed = TRUE;
       } else if (g_str_equal(data, "Error=InvalidRegistration")) {
          code = PUSH_C2DM_CLIENT_ERROR_INVALID_REGISTRATION;
          code_str = _("Invalid registration.");
+         removed = TRUE;
       } else if (g_str_equal(data, "Error=MismatchSenderId")) {
          code = PUSH_C2DM_CLIENT_ERROR_MISMATCH_SENDER_ID;
          code_str = _("Mismatch sender id.");
       } else if (g_str_equal(data, "Error=NotRegistered")) {
          code = PUSH_C2DM_CLIENT_ERROR_NOT_REGISTERED;
          code_str = _("Not registered.");
+         removed = TRUE;
       } else if (g_str_equal(data, "Error=MessageTooBig")) {
          code = PUSH_C2DM_CLIENT_ERROR_MESSAGE_TOO_BIG;
          code_str = _("Message too big.");
@@ -169,6 +175,15 @@ push_c2dm_client_message_cb (SoupSession *session,
       g_simple_async_result_set_error(simple,
                                       PUSH_C2DM_CLIENT_ERROR,
                                       code, "%s", code_str);
+      if (removed) {
+         registration_id = g_object_get_data(G_OBJECT(simple),
+                                             "registration-id");
+         identity = g_object_new(PUSH_TYPE_C2DM_IDENTITY,
+                                 "registration-id", registration_id,
+                                 NULL);
+         g_signal_emit(client, gSignals[IDENTITY_REMOVED], 0, identity);
+         g_object_unref(identity);
+      }
    }
 
 failure:
@@ -232,6 +247,8 @@ push_c2dm_client_deliver_async (PushC2dmClient      *client,
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_c2dm_client_deliver_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
+   g_object_set_data_full(G_OBJECT(simple), "registration-id",
+                          g_strdup(registration_id), g_free);
    soup_session_queue_message(SOUP_SESSION(client),
                               request,
                               push_c2dm_client_message_cb,
