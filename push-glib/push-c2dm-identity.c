@@ -37,6 +37,14 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+PushC2dmIdentity *
+push_c2dm_identity_new (const gchar *registration_id)
+{
+   return g_object_new(PUSH_TYPE_C2DM_IDENTITY,
+                       "registration-id", registration_id,
+                       NULL);
+}
+
 /**
  * push_c2dm_identity_get_registration_id:
  * @identity: (in): A #PushC2dmIdentity.

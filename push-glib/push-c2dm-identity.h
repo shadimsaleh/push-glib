@@ -50,7 +50,7 @@ struct _PushC2dmIdentityClass
 
 const gchar      *push_c2dm_identity_get_registration_id (PushC2dmIdentity *identity);
 GType             push_c2dm_identity_get_type            (void) G_GNUC_CONST;
-PushC2dmIdentity *push_c2dm_identity_new                 (void);
+PushC2dmIdentity *push_c2dm_identity_new                 (const gchar      *registration_id);
 void              push_c2dm_identity_set_registration_id (PushC2dmIdentity *identity,
                                                           const gchar      *registration_id);
 
