@@ -84,9 +84,12 @@ connect_cb (GObject      *object,
 
    message = g_object_new(PUSH_TYPE_APS_MESSAGE,
                           NULL);
-   push_aps_message_add_extra_string(message,
-                                     "collapse_key",
-                                     gCollapseKey);
+
+   if (gCollapseKey) {
+      push_aps_message_add_extra_string(message,
+                                        "collapse_key",
+                                        gCollapseKey);
+   }
 
    gToSend = g_strv_length(gDeviceTokens);
 
