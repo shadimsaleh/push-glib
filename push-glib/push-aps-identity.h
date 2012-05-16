@@ -48,10 +48,11 @@ struct _PushApsIdentityClass
    GObjectClass parent_class;
 };
 
-GType        push_aps_identity_get_type         (void) G_GNUC_CONST;
-const gchar *push_aps_identity_get_device_token (PushApsIdentity *identity);
-void         push_aps_identity_set_device_token (PushApsIdentity *identity,
-                                                 const gchar     *device_token);
+PushApsIdentity *push_aps_identity_new              (const gchar     *device_token);
+GType            push_aps_identity_get_type         (void) G_GNUC_CONST;
+const gchar     *push_aps_identity_get_device_token (PushApsIdentity *identity);
+void             push_aps_identity_set_device_token (PushApsIdentity *identity,
+                                                     const gchar     *device_token);
 
 G_END_DECLS
 

@@ -37,6 +37,14 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+PushApsIdentity *
+push_aps_identity_new (const gchar *device_token)
+{
+   return g_object_new(PUSH_TYPE_APS_IDENTITY,
+                       "device-token", device_token,
+                       NULL);
+}
+
 const gchar *
 push_aps_identity_get_device_token (PushApsIdentity *identity)
 {
