@@ -50,6 +50,7 @@ struct _PushApsClientPrivate
    GHashTable *results;
    guint last_id;
    guint8 gw_read_buf[6];
+   guint feedback_interval;
 };
 
 enum
@@ -59,6 +60,7 @@ enum
    PROP_SSL_CERT_FILE,
    PROP_SSL_KEY_FILE,
    PROP_TLS_CERTIFICATE,
+   PROP_FEEDBACK_INTERVAL,
    LAST_PROP
 };
 
@@ -718,6 +720,33 @@ push_aps_client_try_load_tls (PushApsClient *client)
    }
 }
 
+/**
+ * push_aps_client_get_feedback_interval:
+ * @client: (in): A #PushApsClient.
+ *
+ * Fetches the "feedback-interval" property, the number of minutes between
+ * connecting to the feedback service for status information.
+ *
+ * Returns: A #guint containing the feedback interval in minutes.
+ */
+guint
+push_aps_client_get_feedback_interval (PushApsClient *client)
+{
+   g_return_val_if_fail(PUSH_IS_APS_CLIENT(client), 0);
+   return client->priv->feedback_interval;
+}
+
+static void
+push_aps_client_set_feedback_interval (PushApsClient *client,
+                                       guint          feedback_interval)
+{
+   ENTRY;
+   g_return_if_fail(PUSH_IS_APS_CLIENT(client));
+   g_return_if_fail(feedback_interval > 0);
+   client->priv->feedback_interval = feedback_interval;
+   EXIT;
+}
+
 static void
 push_aps_client_finalize (GObject *object)
 {
@@ -754,6 +783,9 @@ push_aps_client_get_property (GObject    *object,
    PushApsClient *client = PUSH_APS_CLIENT(object);
 
    switch (prop_id) {
+   case PROP_FEEDBACK_INTERVAL:
+      g_value_set_uint(value, push_aps_client_get_feedback_interval(client));
+      break;
    case PROP_MODE:
       g_value_set_enum(value, push_aps_client_get_mode(client));
       break;
@@ -780,6 +812,9 @@ push_aps_client_set_property (GObject      *object,
    PushApsClient *client = PUSH_APS_CLIENT(object);
 
    switch (prop_id) {
+   case PROP_FEEDBACK_INTERVAL:
+      push_aps_client_set_feedback_interval(client, g_value_get_uint(value));
+      break;
    case PROP_MODE:
       push_aps_client_set_mode(client, g_value_get_enum(value));
       break;
@@ -809,6 +844,17 @@ push_aps_client_class_init (PushApsClientClass *klass)
    object_class->get_property = push_aps_client_get_property;
    object_class->set_property = push_aps_client_set_property;
    g_type_class_add_private(object_class, sizeof(PushApsClientPrivate));
+
+   gParamSpecs[PROP_FEEDBACK_INTERVAL] =
+      g_param_spec_uint("feedback-interval",
+                        _("Feedback Interval"),
+                        _("The interval minutes between feedback connections."),
+                        1,
+                        G_MAXUINT32,
+                        10,
+                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_FEEDBACK_INTERVAL,
+                                   gParamSpecs[PROP_FEEDBACK_INTERVAL]);
 
    gParamSpecs[PROP_MODE] =
       g_param_spec_enum("mode",
