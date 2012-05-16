@@ -21,6 +21,26 @@
 #include "push-aps-message.h"
 #include "push-debug.h"
 
+/**
+ * SECTION:push-aps-message
+ * @title: PushApsMessage
+ * @short_description: An APS notification to be delivered.
+ *
+ * #PushApsMessage represents a notification that is to be delivered to
+ * an identity via #PushApsClient. It contains the typical "alert",
+ * "badge", and "sound" fields. Additionally, you may specify extra fields
+ * for the notification using push_aps_message_add_extra() and similar
+ * functions.
+ *
+ * Since APS uses a JSON encoded string in the protocol, to add generic
+ * data to the message, you should provided a JsonNode. Alternatively,
+ * you can use simple helpers such as push_aps_message_add_extra_string()
+ * for common cases.
+ *
+ * Use push_aps_client_deliver_async() to deliver a message to a
+ * #PushApsIdentity.
+ */
+
 G_DEFINE_TYPE(PushApsMessage, push_aps_message, G_TYPE_OBJECT)
 
 struct _PushApsMessagePrivate
@@ -114,6 +134,18 @@ push_aps_message_get_json (PushApsMessage *message)
    RETURN(ret);
 }
 
+/**
+ * push_aps_message_add_extra:
+ * @message: A #PushApsMessage.
+ * @key: The key to associate with @value.
+ * @value: (transfer none): A #JsonNode to send with the message.
+ *
+ * Adds a JsonValue to the JSON portion of a push notification. @key MUST NOT
+ * be "aps", as that is reserved for internal use by the APS message.
+ *
+ * The extra value will be sent inside the JSON encoded message using @key
+ * as the field name in the dictionary.
+ */
 void
 push_aps_message_add_extra (PushApsMessage *message,
                             const gchar    *key,
@@ -144,6 +176,18 @@ push_aps_message_add_extra (PushApsMessage *message,
    EXIT;
 }
 
+/**
+ * push_aps_message_add_extra_string:
+ * @message: A #PushApsMessage.
+ * @key: The key for @value.
+ * @value: The value for @key.
+ *
+ * Adds a key/value pair to the resulting JSON encoded string that is
+ * delivered to a #PushApsIdentity.
+ *
+ * This simply creates a JsonNode containing @value and calls
+ * push_aps_message_add_extra().
+ */
 void
 push_aps_message_add_extra_string (PushApsMessage *message,
                                    const gchar    *key,
@@ -164,6 +208,15 @@ push_aps_message_add_extra_string (PushApsMessage *message,
    EXIT;
 }
 
+/**
+ * push_aps_message_get_alert:
+ * @message: (in): A #PushApsMessage.
+ *
+ * Fetches the "alert" property, containing the text of the alert message
+ * or %NULL.
+ *
+ * Returns: A string or %NULL if not set.
+ */
 const gchar *
 push_aps_message_get_alert (PushApsMessage *message)
 {
@@ -171,6 +224,15 @@ push_aps_message_get_alert (PushApsMessage *message)
    return message->priv->alert;
 }
 
+/**
+ * push_aps_message_get_badge:
+ * @message: A #PushApsMessage.
+ *
+ * Retrieves the "badge" property, containing the badge number that should
+ * be displayed once the message is received by an identity.
+ *
+ * Returns: The badge number.
+ */
 guint
 push_aps_message_get_badge (PushApsMessage *message)
 {
@@ -178,6 +240,15 @@ push_aps_message_get_badge (PushApsMessage *message)
    return message->priv->badge;
 }
 
+/**
+ * push_aps_message_get_sound:
+ * @message: (in): A #PushApsMessage.
+ *
+ * Retrieves the "sound" property, containing the sound to be played
+ * upon receipt of the message.
+ *
+ * Returns: A string or %NULL if not set.
+ */
 const gchar *
 push_aps_message_get_sound (PushApsMessage *message)
 {
