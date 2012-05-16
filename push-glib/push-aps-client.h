@@ -45,6 +45,8 @@ typedef enum   _PushApsClientMode    PushApsClientMode;
 enum _PushApsClientError
 {
    PUSH_APS_CLIENT_ERROR_NOT_CONNECTED = 1,
+   PUSH_APS_CLIENT_ERROR_ALREADY_CONNECTED,
+   PUSH_APS_CLIENT_ERROR_TLS_NOT_AVAILABLE,
 };
 
 enum _PushApsClientMode
@@ -66,9 +68,13 @@ struct _PushApsClientClass
    GObjectClass parent_class;
 };
 
-GQuark   push_aps_client_error_quark    (void) G_GNUC_CONST;
-GType    push_aps_client_mode_get_type  (void) G_GNUC_CONST;
-GType    push_aps_client_get_type       (void) G_GNUC_CONST;
+void     push_aps_client_connect_async  (PushApsClient        *client,
+                                         GCancellable         *cancellable,
+                                         GAsyncReadyCallback   callback,
+                                         gpointer              user_data);
+gboolean push_aps_client_connect_finish (PushApsClient        *client,
+                                         GAsyncResult         *result,
+                                         GError              **error);
 void     push_aps_client_deliver_async  (PushApsClient        *client,
                                          PushApsIdentity      *identity,
                                          PushApsMessage       *message,
@@ -78,6 +84,9 @@ void     push_aps_client_deliver_async  (PushApsClient        *client,
 gboolean push_aps_client_deliver_finish (PushApsClient        *client,
                                          GAsyncResult         *result,
                                          GError              **error);
+GQuark   push_aps_client_error_quark    (void) G_GNUC_CONST;
+GType    push_aps_client_get_type       (void) G_GNUC_CONST;
+GType    push_aps_client_mode_get_type  (void) G_GNUC_CONST;
 
 G_END_DECLS
 

@@ -55,6 +55,140 @@ static guint       gSignals[LAST_SIGNAL];
 
 static void push_aps_client_try_load_tls (PushApsClient *client);
 
+static void
+push_aps_client_connect_gateway_cb (GObject      *object,
+                                    GAsyncResult *result,
+                                    gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   GSocketConnection *conn;
+   GSocketClient *socket_client = (GSocketClient *)object;
+   PushApsClient *client;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(G_IS_SOCKET_CLIENT(socket_client));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(conn = g_socket_client_connect_to_host_finish(socket_client,
+                                                       result,
+                                                       &error))) {
+      g_simple_async_result_take_error(simple, error);
+   } else {
+      client = PUSH_APS_CLIENT(g_async_result_get_source_object(user_data));
+      g_clear_object(&client->priv->gateway_stream);
+      client->priv->gateway_stream = G_IO_STREAM(conn);
+      g_object_unref(client);
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, !!conn);
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+push_aps_client_connect_event_cb (GSocketClient      *socket_client,
+                                  GSocketClientEvent  event,
+                                  GSocketConnectable *connectable,
+                                  GIOStream          *connection,
+                                  PushApsClient      *client)
+{
+   ENTRY;
+
+   g_assert(G_IS_SOCKET_CLIENT(socket_client));
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   if (event == G_SOCKET_CLIENT_TLS_HANDSHAKING) {
+      g_tls_connection_set_certificate(G_TLS_CONNECTION(connection),
+                                       client->priv->tls_certificate);
+   }
+
+   EXIT;
+}
+
+void
+push_aps_client_connect_async (PushApsClient       *client,
+                               GCancellable        *cancellable,
+                               GAsyncReadyCallback  callback,
+                               gpointer             user_data)
+{
+   PushApsClientPrivate *priv;
+   GSimpleAsyncResult *simple;
+   GSocketClient *socket_client;
+   const gchar *host;
+
+   ENTRY;
+
+   g_return_if_fail(PUSH_IS_APS_CLIENT(client));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+
+   priv = client->priv;
+
+   if (!priv->tls_certificate) {
+      g_simple_async_report_error_in_idle(G_OBJECT(client),
+                                          callback,
+                                          user_data,
+                                          PUSH_APS_CLIENT_ERROR,
+                                          PUSH_APS_CLIENT_ERROR_TLS_NOT_AVAILABLE,
+                                          _("TLS has not yet been configured."));
+      EXIT;
+   }
+
+   if (priv->gateway_stream) {
+      g_simple_async_report_error_in_idle(G_OBJECT(client),
+                                          callback,
+                                          user_data,
+                                          PUSH_APS_CLIENT_ERROR,
+                                          PUSH_APS_CLIENT_ERROR_ALREADY_CONNECTED,
+                                          _("The client is already connected."));
+      EXIT;
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
+                                      push_aps_client_connect_async);
+
+   socket_client = g_socket_client_new();
+   g_signal_connect(socket_client,
+                    "event",
+                    G_CALLBACK(push_aps_client_connect_event_cb),
+                    client);
+   host = (priv->mode == PUSH_APS_CLIENT_PRODUCTION) ?
+          "gateway.push.apple.com" :
+          "gateway.sandbox.push.apple.com";
+   g_socket_client_connect_to_host_async(socket_client,
+                                         host,
+                                         2195,
+                                         cancellable,
+                                         push_aps_client_connect_gateway_cb,
+                                         simple);
+   g_object_unref(socket_client);
+
+   EXIT;
+}
+
+gboolean
+push_aps_client_connect_finish (PushApsClient  *client,
+                                GAsyncResult   *result,
+                                GError        **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   gboolean ret;
+
+   ENTRY;
+
+   g_return_val_if_fail(PUSH_IS_APS_CLIENT(client), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+
+   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   }
+
+   RETURN(ret);
+}
+
 /**
  * push_aps_client_deliver_async:
  * @client: A #PushApsClient.
@@ -87,6 +221,8 @@ push_aps_client_deliver_async (PushApsClient       *client,
    g_return_if_fail(PUSH_IS_APS_CLIENT(client));
    g_return_if_fail(PUSH_IS_APS_IDENTITY(identity));
    g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(callback);
 
    priv = client->priv;
 
