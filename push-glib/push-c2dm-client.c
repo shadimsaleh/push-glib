@@ -23,6 +23,28 @@
 
 #define PUSH_C2DM_CLIENT_URL "https://android.apis.google.com/c2dm/send"
 
+/**
+ * SECTION:push-c2dm-client
+ * @title: PushC2dmClient
+ * @short_description: Send notifications to Android devices.
+ *
+ * #PushC2dmClient provides a convenient way to send a notification to
+ * an Android device via Google's C2DM service. Simply create an instance
+ * of the client and start delivering messages using
+ * push_c2dm_client_deliver_async(). The notification will be delivered
+ * asynchronously and the caller will be notified via the specified
+ * callback.
+ *
+ * If it has been determined that a device has been removed, the
+ * "identity-removed" signal will be emitted. It is important that
+ * consumers connect to this signal and remove the device from their
+ * database to prevent further communication with the service.
+ *
+ * Authentication is currently only provided via "Google Client Login".
+ * As of April 2012, this has been deprecated. OAuth2 support will be
+ * added sometime in the near future.
+ */
+
 G_DEFINE_TYPE(PushC2dmClient, push_c2dm_client, SOUP_TYPE_SESSION_ASYNC)
 
 struct _PushC2dmClientPrivate
