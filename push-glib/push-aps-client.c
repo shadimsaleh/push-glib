@@ -34,6 +34,7 @@ struct _PushApsClientPrivate
    GIOStream *gateway_stream;
    GHashTable *results;
    guint last_id;
+   guint8 gw_read_buf[6];
 };
 
 enum
@@ -58,6 +59,105 @@ static guint       gSignals[LAST_SIGNAL];
 static void push_aps_client_try_load_tls (PushApsClient *client);
 
 static void
+push_aps_client_dispatch_error (PushApsClient      *client,
+                                guint32             result_id,
+                                PushApsClientError  code)
+{
+   PushApsClientPrivate *priv;
+   GSimpleAsyncResult *simple;
+
+   ENTRY;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   priv = client->priv;
+
+   if ((simple = g_hash_table_lookup(priv->results, &result_id))) {
+      g_simple_async_result_set_error(simple,
+                                      PUSH_APS_CLIENT_ERROR,
+                                      code,
+                                      _("The APS delivery failed."));
+      g_simple_async_result_complete_in_idle(simple);
+      g_hash_table_remove(priv->results, &result_id);
+   }
+
+   EXIT;
+}
+
+static void
+push_aps_client_dispatch (PushApsClient *client)
+{
+   PushApsClientPrivate *priv;
+   GSimpleAsyncResult *simple;
+   GHashTableIter iter;
+
+   ENTRY;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   priv = client->priv;
+
+   g_hash_table_iter_init(&iter, priv->results);
+   while (g_hash_table_iter_next(&iter, NULL, (gpointer *)&simple)) {
+      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+      g_simple_async_result_complete_in_idle(simple);
+   }
+
+   EXIT;
+}
+
+static void
+push_aps_client_read_gateway_cb (GObject      *object,
+                                 GAsyncResult *result,
+                                 gpointer      user_data)
+{
+   PushApsClient *client = user_data;
+   const guint8 *buffer;
+   GInputStream *input = (GInputStream *)object;
+   guint32 result_id;
+   GError *error = NULL;
+   guint8 command;
+   guint8 status;
+   gssize ret;
+
+   ENTRY;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+   g_assert(G_IS_INPUT_STREAM(input));
+
+   buffer = client->priv->gw_read_buf;
+   ret = g_input_stream_read_finish(input, result, &error);
+
+   switch (ret) {
+   case -1:
+      /* TODO: push_aps_client_fail(client); */
+      break;
+   case 0:
+      /* EOF */
+      push_aps_client_dispatch(client);
+      break;
+   default:
+      g_assert_cmpint(ret, ==, 6);
+      command = buffer[0];
+      g_assert_cmpint(command, ==, 8);
+      status = buffer[1];
+      g_assert(status <= 8 || status == 255);
+      result_id = GUINT32_FROM_BE(*(guint32 *)&buffer[2]);
+      push_aps_client_dispatch_error(client, result_id, status);
+      g_input_stream_read_async(input,
+                                client->priv->gw_read_buf,
+                                sizeof client->priv->gw_read_buf,
+                                G_PRIORITY_DEFAULT,
+                                NULL, /* priv->shutdown, */
+                                push_aps_client_read_gateway_cb,
+                                client);
+      break;
+   }
+
+   EXIT;
+}
+
+static void
 push_aps_client_connect_gateway_cb (GObject      *object,
                                     GAsyncResult *result,
                                     gpointer      user_data)
@@ -66,6 +166,7 @@ push_aps_client_connect_gateway_cb (GObject      *object,
    GSocketConnection *conn;
    GSocketClient *socket_client = (GSocketClient *)object;
    PushApsClient *client;
+   GInputStream *input;
    GError *error = NULL;
 
    ENTRY;
@@ -82,6 +183,15 @@ push_aps_client_connect_gateway_cb (GObject      *object,
       g_clear_object(&client->priv->gateway_stream);
       client->priv->gateway_stream = G_IO_STREAM(conn);
       g_object_unref(client);
+
+      input = g_io_stream_get_input_stream(G_IO_STREAM(conn));
+      g_input_stream_read_async(input,
+                                client->priv->gw_read_buf,
+                                sizeof client->priv->gw_read_buf,
+                                G_PRIORITY_DEFAULT,
+                                NULL, /* priv->shutdown, */
+                                push_aps_client_read_gateway_cb,
+                                client);
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, !!conn);
