@@ -24,6 +24,7 @@ static gchar         *gCertFile;
 static gchar         *gKeyFile;
 static gchar         *gCollapseKey;
 static gchar        **gDeviceTokens;
+static gboolean       gSandbox;
 static GMainLoop     *gMainLoop;
 static guint          gToSend;
 static GOptionEntry   gEntries[] = {
@@ -35,6 +36,8 @@ static GOptionEntry   gEntries[] = {
      N_("The collapse_key to send APS for consolidating messages.") },
    { "device-token", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &gDeviceTokens,
      N_("The device token to deliver to (multiple okay).") },
+   { "sandbox", 's', 0, G_OPTION_ARG_NONE, &gSandbox,
+     N_("Use the APS sandbox for delivery.") },
    { 0 }
 };
 
@@ -107,6 +110,7 @@ gint
 main (gint   argc,
       gchar *argv[])
 {
+   PushApsClientMode mode;
    GOptionContext *context;
    PushApsClient *client;
    GError *error = NULL;
@@ -131,11 +135,12 @@ main (gint   argc,
 
    gMainLoop = g_main_loop_new(NULL, FALSE);
 
+   mode = gSandbox ? PUSH_APS_CLIENT_SANDBOX : PUSH_APS_CLIENT_PRODUCTION;
    client = g_object_new(PUSH_TYPE_APS_CLIENT,
+                         "mode", mode,
                          "ssl-cert-file", gCertFile,
                          "ssl-key-file", gKeyFile,
                          NULL);
-
    push_aps_client_connect_async(client,
                                  NULL,
                                  connect_cb,
