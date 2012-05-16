@@ -257,6 +257,14 @@ push_aps_message_get_sound (PushApsMessage *message)
    return message->priv->sound;
 }
 
+/**
+ * push_aps_message_set_alert:
+ * @message: A #PushApsMessage.
+ * @alert: (allow-none): The alert text to display.
+ *
+ * Sets the "alert" property of @message. This contains the text that should
+ * be displayed in the alert message, or %NULL for no alert text.
+ */
 void
 push_aps_message_set_alert (PushApsMessage *message,
                             const gchar    *alert)
@@ -270,6 +278,15 @@ push_aps_message_set_alert (PushApsMessage *message,
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_ALERT]);
 }
 
+/**
+ * push_aps_message_set_badge:
+ * @message: A #PushApsMessage.
+ * @badge: The badge number to display or zero to unset.
+ *
+ * Sets the "badge" property. This contains the number to be displayed on
+ * the applications badge on an iOS device. To unset the badge, set this
+ * property to zero.
+ */
 void
 push_aps_message_set_badge (PushApsMessage *message,
                             guint           badge)
@@ -283,6 +300,14 @@ push_aps_message_set_badge (PushApsMessage *message,
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_BADGE]);
 }
 
+/**
+ * push_aps_message_set_sound:
+ * @message: A #PushApsMessage.
+ * @sound: (allow-none): A string containing the sound to play or %NULL.
+ *
+ * Sest the "sound" property of the message. This contains the sound to be
+ * played upon receipt of the message.
+ */
 void
 push_aps_message_set_sound (PushApsMessage *message,
                             const gchar    *sound)
