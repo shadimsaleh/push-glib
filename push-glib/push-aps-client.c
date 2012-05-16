@@ -33,6 +33,7 @@ struct _PushApsClientPrivate
    GIOStream *feedback_stream;
    GIOStream *gateway_stream;
    GHashTable *results;
+   guint last_id;
 };
 
 enum
@@ -210,6 +211,7 @@ push_aps_client_encode (PushApsClient *client,
                         const gchar   *message)
 {
    GByteArray *ret = NULL;
+   guint32 b32;
    guint16 b16;
    guchar *data;
    guint8 b8;
@@ -223,18 +225,39 @@ push_aps_client_encode (PushApsClient *client,
 
    ret = g_byte_array_sized_new(64);
 
+   /*
+    * Command.
+    */
    b8 = 1;
    g_byte_array_append(ret, &b8, 1);
 
+   /*
+    * Identifier.
+    */
+   b32 = GUINT32_TO_BE(++client->priv->last_id);
+   g_byte_array_append(ret, (guint8 *)&b32, 4);
+
+   /*
+    * TODO: Expiry.
+    */
+   b32 = 0;
+   g_byte_array_append(ret, (guint8 *)&b32, 4);
+
+   /*
+    * Token length and token.
+    */
    data = g_base64_decode(device_token, &len);
    b16 = len;
-   b16 = GUINT16_TO_LE(b16);
+   b16 = GUINT16_TO_BE(b16);
    g_byte_array_append(ret, (guint8 *)&b16, 2);
    g_byte_array_append(ret, (guint8 *)data, len);
    g_free(data);
 
+   /*
+    * Payload length and payload.
+    */
    b16 = strlen(message);
-   b16 = GUINT16_TO_LE(b16);
+   b16 = GUINT16_TO_BE(b16);
    g_byte_array_append(ret, (guint8 *)&b16, 2);
    g_byte_array_append(ret, (guint8 *)message, strlen(message));
 
