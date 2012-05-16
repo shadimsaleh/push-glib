@@ -203,6 +203,43 @@ push_aps_client_connect_finish (PushApsClient  *client,
    RETURN(ret);
 }
 
+static GByteArray *
+push_aps_client_encode (PushApsClient *client,
+                        const gchar   *device_token,
+                        const gchar   *message)
+{
+   GByteArray *ret = NULL;
+   guint16 b16;
+   guchar *data;
+   guint8 b8;
+   gsize len;
+
+   ENTRY;
+
+   g_return_val_if_fail(PUSH_IS_APS_CLIENT(client), NULL);
+   g_return_val_if_fail(device_token, NULL);
+   g_return_val_if_fail(message, NULL);
+
+   ret = g_byte_array_sized_new(64);
+
+   b8 = 1;
+   g_byte_array_append(ret, &b8, 1);
+
+   data = g_base64_decode(device_token, &len);
+   b16 = len;
+   b16 = GUINT16_TO_LE(b16);
+   g_byte_array_append(ret, (guint8 *)&b16, 2);
+   g_byte_array_append(ret, (guint8 *)data, len);
+   g_free(data);
+
+   b16 = strlen(message);
+   b16 = GUINT16_TO_LE(b16);
+   g_byte_array_append(ret, (guint8 *)&b16, 2);
+   g_byte_array_append(ret, (guint8 *)message, strlen(message));
+
+   RETURN(ret);
+}
+
 /**
  * push_aps_client_deliver_async:
  * @client: A #PushApsClient.
@@ -229,6 +266,10 @@ push_aps_client_deliver_async (PushApsClient       *client,
 {
    PushApsClientPrivate *priv;
    GSimpleAsyncResult *simple;
+   GOutputStream *stream;
+   GByteArray *buffer;
+   GError *error = NULL;
+   gsize bytes_written;
 
    ENTRY;
 
@@ -261,11 +302,23 @@ push_aps_client_deliver_async (PushApsClient       *client,
 
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_aps_client_deliver_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
 
-   /*
-    * TODO: Write request to the outgoing tls connection.
-    */
+   buffer = push_aps_client_encode(client,
+                                   push_aps_identity_get_device_token(identity),
+                                   push_aps_message_get_json(message));
 
+   stream = g_io_stream_get_output_stream(priv->gateway_stream);
+   if (!g_output_stream_write_all(stream,
+                                  buffer->data,
+                                  buffer->len,
+                                  &bytes_written,
+                                  NULL, /* priv->shutdown, */
+                                  &error)) {
+      /* TODO: push_aps_client_fail(client); */
+   }
+
+   g_byte_array_free(buffer, TRUE);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
