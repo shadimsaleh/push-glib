@@ -127,6 +127,14 @@ push_aps_client_connect_async (PushApsClient       *client,
 
    priv = client->priv;
 
+   if (priv->tls_error) {
+      g_simple_async_report_gerror_in_idle(G_OBJECT(client),
+                                           callback,
+                                           user_data,
+                                           priv->tls_error);
+      EXIT;
+   }
+
    if (!priv->tls_certificate) {
       g_simple_async_report_error_in_idle(G_OBJECT(client),
                                           callback,
@@ -150,7 +158,13 @@ push_aps_client_connect_async (PushApsClient       *client,
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_aps_client_connect_async);
 
-   socket_client = g_socket_client_new();
+   socket_client = g_object_new(G_TYPE_SOCKET_CLIENT,
+                                "family", G_SOCKET_FAMILY_IPV4,
+                                "protocol", G_SOCKET_PROTOCOL_TCP,
+                                "timeout", 60,
+                                "tls", TRUE,
+                                "type", G_SOCKET_TYPE_STREAM,
+                                NULL);
    g_signal_connect(socket_client,
                     "event",
                     G_CALLBACK(push_aps_client_connect_event_cb),
@@ -381,8 +395,9 @@ push_aps_client_set_tls_certificate (PushApsClient   *client,
 {
    ENTRY;
    g_return_if_fail(PUSH_IS_APS_CLIENT(client));
-   client->priv->tls_certificate =
-      tls_certificate ? g_object_ref(tls_certificate) : NULL;
+   if (tls_certificate) {
+      client->priv->tls_certificate = g_object_ref(tls_certificate);
+   }
    EXIT;
 }
 
