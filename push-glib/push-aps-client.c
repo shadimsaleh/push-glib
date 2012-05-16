@@ -32,6 +32,7 @@ struct _PushApsClientPrivate
    gchar *ssl_key_file;
    GIOStream *feedback_stream;
    GIOStream *gateway_stream;
+   GHashTable *results;
 };
 
 enum
@@ -498,6 +499,9 @@ push_aps_client_finalize (GObject *object)
 
    g_clear_error(&priv->tls_error);
 
+   g_hash_table_unref(priv->results);
+   priv->results = NULL;
+
    G_OBJECT_CLASS(push_aps_client_parent_class)->finalize(object);
 
    EXIT;
@@ -627,6 +631,9 @@ push_aps_client_init (PushApsClient *client)
                                               PUSH_TYPE_APS_CLIENT,
                                               PushApsClientPrivate);
    client->priv->mode = PUSH_APS_CLIENT_PRODUCTION;
+   client->priv->results =
+      g_hash_table_new_full(g_int_hash, g_int_equal,
+                            g_free, g_object_unref);
    EXIT;
 }
 
