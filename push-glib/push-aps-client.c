@@ -58,6 +58,44 @@ static guint       gSignals[LAST_SIGNAL];
 
 static void push_aps_client_try_load_tls (PushApsClient *client);
 
+static const gchar *
+get_error_message (PushApsClientError error)
+{
+   const gchar *message;
+
+   switch ((guint)error) {
+   case PUSH_APS_CLIENT_ERROR_PROCESSING_ERROR:
+      message = _("Processing Error");
+      break;
+   case PUSH_APS_CLIENT_ERROR_MISSING_DEVICE_TOKEN:
+      message = _("Missing Device Token");
+      break;
+   case PUSH_APS_CLIENT_ERROR_MISSING_TOPIC:
+      message = _("Missing Topic");
+      break;
+   case PUSH_APS_CLIENT_ERROR_MISSING_PAYLOAD:
+      message = _("Missing Payload");
+      break;
+   case PUSH_APS_CLIENT_ERROR_INVALID_TOKEN_SIZE:
+      message = _("Invalid Token Size");
+      break;
+   case PUSH_APS_CLIENT_ERROR_INVALID_TOPIC_SIZE:
+      message = _("Invalid Topic Size");
+      break;
+   case PUSH_APS_CLIENT_ERROR_INVALID_PAYLOAD_SIZE:
+      message = _("Invalid Payload Size");
+      break;
+   case PUSH_APS_CLIENT_ERROR_INVALID_TOKEN:
+      message = _("Invalid Token");
+      break;
+   default:
+      message = _("An unknown error ocurred during delivery.");
+      break;
+   }
+
+   return message;
+}
+
 static void
 push_aps_client_dispatch_error (PushApsClient      *client,
                                 guint32             result_id,
@@ -76,7 +114,8 @@ push_aps_client_dispatch_error (PushApsClient      *client,
       g_simple_async_result_set_error(simple,
                                       PUSH_APS_CLIENT_ERROR,
                                       code,
-                                      _("The APS delivery failed."));
+                                      "%s",
+                                      get_error_message(code));
       g_simple_async_result_complete_in_idle(simple);
       g_hash_table_remove(priv->results, &result_id);
    }
