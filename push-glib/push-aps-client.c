@@ -45,10 +45,10 @@ struct _PushApsClientPrivate
    GError *tls_error;
    gchar *ssl_cert_file;
    gchar *ssl_key_file;
-   GIOStream *feedback_stream;
    GIOStream *gateway_stream;
    GHashTable *results;
    guint last_id;
+   guint8 fb_read_buf[38];
    guint8 gw_read_buf[6];
    guint feedback_interval;
    guint feedback_handler;
@@ -227,15 +227,153 @@ push_aps_client_read_gateway_cb (GObject      *object,
    EXIT;
 }
 
+static void
+push_aps_client_connect_event_cb (GSocketClient      *socket_client,
+                                  GSocketClientEvent  event,
+                                  GSocketConnectable *connectable,
+                                  GIOStream          *connection,
+                                  PushApsClient      *client)
+{
+   ENTRY;
+
+   g_assert(G_IS_SOCKET_CLIENT(socket_client));
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   if (event == G_SOCKET_CLIENT_TLS_HANDSHAKING) {
+      g_tls_connection_set_certificate(G_TLS_CONNECTION(connection),
+                                       client->priv->tls_certificate);
+   }
+
+   EXIT;
+}
+
+static void
+push_aps_client_read_feedback_cb (GObject      *object,
+                                  GAsyncResult *result,
+                                  gpointer      user_data)
+{
+   PushApsClientPrivate *priv;
+   PushApsIdentity *identity;
+   PushApsClient *client = user_data;
+   GInputStream *stream = (GInputStream *)object;
+   guint32 tt;
+   guint32 token_len;
+   GError *error = NULL;
+   gssize ret;
+   gchar *device_token;
+
+   g_assert(G_IS_INPUT_STREAM(stream));
+
+   priv = client->priv;
+
+   ret = g_input_stream_read_finish(stream, result, &error);
+
+   switch (ret) {
+   case -1:
+      /* TODO: Failed reading feedback. */
+      break;
+   case 0:
+      /* TODO: Eof */
+      break;
+   default:
+      g_assert_cmpint(ret, ==, 38);
+      memcpy(&tt, priv->fb_read_buf, 4);
+      tt = GUINT32_FROM_BE(tt);
+      memcpy(&token_len, &priv->fb_read_buf[4], 2);
+      token_len = GUINT32_FROM_BE(token_len);
+      g_assert_cmpint(token_len, ==, 32);
+      if (token_len == 32) {
+         device_token = g_base64_encode(&priv->fb_read_buf[6], token_len);
+         g_assert(device_token);
+         identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
+                                 "device-token", device_token,
+                                 NULL);
+         g_signal_emit(client, gSignals[IDENTITY_REMOVED], 0, identity);
+         g_object_unref(identity);
+         g_free(device_token);
+      }
+      g_input_stream_read_async(stream,
+                                client->priv->fb_read_buf,
+                                sizeof client->priv->fb_read_buf,
+                                G_PRIORITY_DEFAULT,
+                                NULL, /* priv->shutdown */
+                                push_aps_client_read_feedback_cb,
+                                client);
+   }
+}
+
+static void
+push_aps_client_connect_feedback_cb (GObject      *object,
+                                     GAsyncResult *result,
+                                     gpointer      user_data)
+{
+   GSocketConnection *conn;
+   PushApsClient *client = user_data;
+   GSocketClient *socket_client = (GSocketClient *)object;
+   GInputStream *stream;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(G_IS_SOCKET_CLIENT(socket_client));
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   if (!(conn = g_socket_client_connect_to_host_finish(socket_client,
+                                                       result,
+                                                       &error))) {
+      g_warning("Failed to connect to APS feedback: %s", error->message);
+      g_error_free(error);
+   } else {
+      stream = g_io_stream_get_input_stream(G_IO_STREAM(conn));
+      g_input_stream_read_async(stream,
+                                client->priv->fb_read_buf,
+                                sizeof client->priv->fb_read_buf,
+                                G_PRIORITY_DEFAULT,
+                                NULL, /* priv->shutdown */
+                                push_aps_client_read_feedback_cb,
+                                client);
+      g_object_unref(conn);
+   }
+
+   EXIT;
+}
+
 static gboolean
 push_aps_client_feedback_cb (gpointer data)
 {
+   PushApsClientPrivate *priv;
    PushApsClient *client = data;
+   GSocketClient *socket_client;
+   const gchar *host;
    gboolean ret = TRUE;
 
    ENTRY;
 
    g_assert(PUSH_IS_APS_CLIENT(client));
+
+   priv = client->priv;
+
+   socket_client = g_object_new(G_TYPE_SOCKET_CLIENT,
+                                "family", G_SOCKET_FAMILY_IPV4,
+                                "protocol", G_SOCKET_PROTOCOL_TCP,
+                                "timeout", 60,
+                                "tls", TRUE,
+                                "type", G_SOCKET_TYPE_STREAM,
+                                NULL);
+   g_signal_connect(socket_client,
+                    "event",
+                    G_CALLBACK(push_aps_client_connect_event_cb),
+                    client);
+   host = (priv->mode == PUSH_APS_CLIENT_PRODUCTION) ?
+          "feedback.push.apple.com" :
+          "feedback.sandbox.push.apple.com";
+   g_socket_client_connect_to_host_async(socket_client,
+                                         host,
+                                         2196,
+                                         NULL, /* TODO: priv->shutdown */
+                                         push_aps_client_connect_feedback_cb,
+                                         client);
+   g_object_unref(socket_client);
 
    RETURN(ret);
 }
@@ -293,26 +431,6 @@ push_aps_client_connect_gateway_cb (GObject      *object,
    g_simple_async_result_set_op_res_gboolean(simple, !!conn);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
-
-   EXIT;
-}
-
-static void
-push_aps_client_connect_event_cb (GSocketClient      *socket_client,
-                                  GSocketClientEvent  event,
-                                  GSocketConnectable *connectable,
-                                  GIOStream          *connection,
-                                  PushApsClient      *client)
-{
-   ENTRY;
-
-   g_assert(G_IS_SOCKET_CLIENT(socket_client));
-   g_assert(PUSH_IS_APS_CLIENT(client));
-
-   if (event == G_SOCKET_CLIENT_TLS_HANDSHAKING) {
-      g_tls_connection_set_certificate(G_TLS_CONNECTION(connection),
-                                       client->priv->tls_certificate);
-   }
 
    EXIT;
 }
