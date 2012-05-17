@@ -381,6 +381,11 @@ push_aps_message_finalize (GObject *object)
    g_free(priv->json);
    priv->json = NULL;
 
+   if (priv->expires_at) {
+      g_date_time_unref(priv->expires_at);
+      priv->expires_at = NULL;
+   }
+
    if (priv->extra) {
       g_hash_table_unref(priv->extra);
       priv->extra = NULL;
