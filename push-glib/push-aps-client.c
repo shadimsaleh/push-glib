@@ -198,11 +198,11 @@ push_aps_client_read_gateway_cb (GObject      *object,
    switch (ret) {
    case -1:
       /* TODO: push_aps_client_fail(client); */
-      break;
+      EXIT;
    case 0:
       /* EOF */
       push_aps_client_dispatch(client);
-      break;
+      EXIT;
    default:
       DUMP_BYTES(gateway, ((guint8 *)&client->priv->gw_read_buf), ret);
       g_assert_cmpint(ret, ==, 6);
@@ -219,10 +219,10 @@ push_aps_client_read_gateway_cb (GObject      *object,
                                 NULL, /* priv->shutdown, */
                                 push_aps_client_read_gateway_cb,
                                 client);
-      break;
+      EXIT;
    }
 
-   EXIT;
+   g_assert_not_reached();
 }
 
 static void
