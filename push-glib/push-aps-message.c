@@ -24,7 +24,7 @@
 /**
  * SECTION:push-aps-message
  * @title: PushApsMessage
- * @short_description: An APS notification to be delivered.
+ * @short_description: An APS notification.
  *
  * #PushApsMessage represents a notification that is to be delivered to
  * an identity via #PushApsClient. It contains the typical "alert",

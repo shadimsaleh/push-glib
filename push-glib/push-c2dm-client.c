@@ -26,7 +26,7 @@
 /**
  * SECTION:push-c2dm-client
  * @title: PushC2dmClient
- * @short_description: Send notifications to Android devices.
+ * @short_description: Client to send notifications to C2DM (Android) devices.
  *
  * #PushC2dmClient provides a convenient way to send a notification to
  * an Android device via Google's C2DM service. Simply create an instance

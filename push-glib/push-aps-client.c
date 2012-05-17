@@ -24,7 +24,7 @@
 /**
  * SECTION:push-aps-client
  * @title: PushApsClient
- * @short_description: Send notification to iOS devices.
+ * @short_description: Client to send notifications to APS (iOS) devices.
  *
  * #PushApsClient provides a convenient way to send notifications to Apple
  * iOS device. Simply create an instance of the client with your TLS

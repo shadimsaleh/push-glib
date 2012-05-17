@@ -24,7 +24,7 @@
 /**
  * SECTION:push-aps-identity
  * @title: PushApsIdentity
- * @short_description: An identity for delivering notifcations to.
+ * @short_description: An APS device that can be notified.
  *
  * #PushApsIdentity represents a device that can receive notifications
  * via the Apple push gateway.
