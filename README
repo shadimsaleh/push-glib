@@ -8,4 +8,35 @@ Google's C2DM as used by Android.
 
 The API will likely churn a lot until a good design is proved.
 
--- Christian
+
+-------------------------------------------------------------------------------
+OVERVIEW
+-------------------------------------------------------------------------------
+
+See the two accompanying tools, push-c2dm and push-aps, for example API usage.
+
+Essentially, whether you want to communicate over C2DM or APS, there are
+three objects to deal with.
+
+  Client   - Manages communication to/from the service.
+  Identity - Represents and end-client device to notify.
+  Message  - Represents the message to deliver.
+
+For C2DM:
+
+  * PushC2dmClient
+  * PushC2dmIdentity
+  * PushC2dmMessage
+
+For APS:
+  * PushApsClient
+  * PushApsIdentity
+  * PushApsMessage
+
+
+-------------------------------------------------------------------------------
+BUGS
+-------------------------------------------------------------------------------
+
+Email me directly, or submit a bug-report on Github issues.
+
