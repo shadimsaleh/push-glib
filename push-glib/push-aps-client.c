@@ -1082,6 +1082,7 @@ push_aps_client_init (PushApsClient *client)
       g_hash_table_new_full(g_int_hash, g_int_equal,
                             g_free, g_object_unref);
    client->priv->last_id = g_random_int();
+   client->priv->feedback_interval = 10;
    EXIT;
 }
 
