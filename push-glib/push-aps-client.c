@@ -36,6 +36,8 @@
  * so may cause Apple to revoke your access to APS for a period of time.
  */
 
+#define PUSH_APS_CLIENT_TIMEOUT_SECONDS 2
+
 G_DEFINE_TYPE(PushApsClient, push_aps_client, G_TYPE_OBJECT)
 
 #pragma pack(1)
@@ -628,6 +630,31 @@ push_aps_client_encode (PushApsClient *client,
    RETURN(ret);
 }
 
+static gboolean
+push_aps_client_complete_result (GSimpleAsyncResult *simple)
+{
+   PushApsClient *client;
+   guint32 request_id;
+
+   ENTRY;
+
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+   client = g_object_get_data(G_OBJECT(simple), "client");
+   request_id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(simple),
+                                                  "request-id"));
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   if (g_hash_table_lookup(client->priv->results, &request_id)) {
+      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+      g_simple_async_result_complete_in_idle(simple);
+      g_hash_table_remove(client->priv->results, &request_id);
+   }
+
+   g_object_unref(simple);
+
+   RETURN(FALSE);
+}
+
 /**
  * push_aps_client_deliver_async:
  * @client: A #PushApsClient.
@@ -691,15 +718,17 @@ push_aps_client_deliver_async (PushApsClient       *client,
    }
 
    device_token = push_aps_identity_get_device_token(identity);
+   request_id = g_new0(guint32, 1);
+   *request_id = ++priv->last_id;
 
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_aps_client_deliver_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
    g_object_set_data_full(G_OBJECT(simple), "device-token",
                           g_strdup(device_token), g_free);
+   g_object_set_data(G_OBJECT(simple), "request-id",
+                     GINT_TO_POINTER(*request_id));
 
-   request_id = g_new0(guint32, 1);
-   *request_id = ++priv->last_id;
    buffer = push_aps_client_encode(client,
                                    device_token,
                                    push_aps_message_get_expires_at(message),
@@ -707,6 +736,23 @@ push_aps_client_deliver_async (PushApsClient       *client,
                                    *request_id);
 
    g_hash_table_insert(priv->results, request_id, simple);
+
+   /*
+    * APS does not find it acceptable to tell us that it has suceeded
+    * in accepting a notification. It only notifies us if there was
+    * an error in the request (such as an invalid token). So we have
+    * to synthesize success after a timeout period, after which, it is
+    * still possible that they were just very delayed in replying with
+    * an error.
+    */
+   {
+      g_object_set_data_full(G_OBJECT(simple), "client",
+                             g_object_ref(client),
+                             g_object_unref);
+      g_timeout_add_seconds(PUSH_APS_CLIENT_TIMEOUT_SECONDS,
+                            (GSourceFunc)push_aps_client_complete_result,
+                            g_object_ref(simple));
+   }
 
    stream = g_io_stream_get_output_stream(priv->gateway_stream);
    if (!g_output_stream_write_all(stream,
