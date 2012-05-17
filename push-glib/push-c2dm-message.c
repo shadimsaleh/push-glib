@@ -25,7 +25,7 @@
 /**
  * SECTION:push-c2dm-message
  * @title: PushC2dmMessage
- * @short_description: A c2dm notification.
+ * @short_description: A C2DM notification.
  *
  * #PushC2dmMessage represents a notification that can be delivered to
  * a #PushC2dmIdentity using #PushC2dmClient. It can contain various
@@ -124,7 +124,7 @@ push_c2dm_message_build_params (PushC2dmMessage *message)
  * @value: (in): The value for @key.
  *
  * This adds an additional key/value pair to be delivered in the C2DM message.
- * This is sent as "data.<key>" to the C2DM service.
+ * This is sent as "data.key" to the C2DM service.
  */
 void
 push_c2dm_message_add_param (PushC2dmMessage *message,
