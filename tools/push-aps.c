@@ -20,24 +20,30 @@
 #include <push-glib/push-glib.h>
 #include <stdlib.h>
 
+static gchar         *gAlert;
+static guint          gBadge;
 static gchar         *gCertFile;
 static gchar         *gKeyFile;
-static gchar         *gCollapseKey;
 static gchar        **gDeviceTokens;
 static gboolean       gSandbox;
+static gchar         *gSound;
 static GMainLoop     *gMainLoop;
 static guint          gToSend;
 static GOptionEntry   gEntries[] = {
+   { "alert", 'a', 0, G_OPTION_ARG_STRING, &gAlert,
+     N_("The alert text to display.") },
+   { "badge", 'b', 0, G_OPTION_ARG_INT, &gBadge,
+     N_("The badge number to display (0 to reset).") },
    { "cert-file", 'f', 0, G_OPTION_ARG_FILENAME, &gCertFile,
      N_("The certificate file for the APS TLS client.") },
-   { "key-file", 'k', 0, G_OPTION_ARG_FILENAME, &gKeyFile,
-     N_("The key file for the APS TLS client.") },
-   { "collapse-key", 'c', 0, G_OPTION_ARG_STRING, &gCollapseKey,
-     N_("The collapse_key to send APS for consolidating messages.") },
    { "device-token", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &gDeviceTokens,
      N_("The device token to deliver to (multiple okay).") },
+   { "key-file", 'k', 0, G_OPTION_ARG_FILENAME, &gKeyFile,
+     N_("The key file for the APS TLS client.") },
    { "sandbox", 's', 0, G_OPTION_ARG_NONE, &gSandbox,
      N_("Use the APS sandbox for delivery.") },
+   { "sound", 'n', 0, G_OPTION_ARG_STRING, &gSound,
+     N_("The sound file to play.") },
    { 0 }
 };
 
@@ -83,13 +89,10 @@ connect_cb (GObject      *object,
    }
 
    message = g_object_new(PUSH_TYPE_APS_MESSAGE,
+                          "alert", gAlert,
+                          "badge", gBadge,
+                          "sound", gSound,
                           NULL);
-
-   if (gCollapseKey) {
-      push_aps_message_add_extra_string(message,
-                                        "collapse_key",
-                                        gCollapseKey);
-   }
 
    gToSend = g_strv_length(gDeviceTokens);
 
