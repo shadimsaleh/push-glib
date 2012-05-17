@@ -88,39 +88,27 @@ static void push_aps_client_try_load_tls (PushApsClient *client);
 static const gchar *
 get_error_message (PushApsClientError error)
 {
-   const gchar *message;
-
    switch ((guint)error) {
    case PUSH_APS_CLIENT_ERROR_PROCESSING_ERROR:
-      message = _("Processing Error");
-      break;
+      return _("Processing Error");
    case PUSH_APS_CLIENT_ERROR_MISSING_DEVICE_TOKEN:
-      message = _("Missing Device Token");
-      break;
+      return _("Missing Device Token");
    case PUSH_APS_CLIENT_ERROR_MISSING_TOPIC:
-      message = _("Missing Topic");
-      break;
+      return _("Missing Topic");
    case PUSH_APS_CLIENT_ERROR_MISSING_PAYLOAD:
-      message = _("Missing Payload");
-      break;
+      return _("Missing Payload");
    case PUSH_APS_CLIENT_ERROR_INVALID_TOKEN_SIZE:
-      message = _("Invalid Token Size");
-      break;
+      return _("Invalid Token Size");
    case PUSH_APS_CLIENT_ERROR_INVALID_TOPIC_SIZE:
-      message = _("Invalid Topic Size");
-      break;
+      return _("Invalid Topic Size");
    case PUSH_APS_CLIENT_ERROR_INVALID_PAYLOAD_SIZE:
-      message = _("Invalid Payload Size");
-      break;
+      return _("Invalid Payload Size");
    case PUSH_APS_CLIENT_ERROR_INVALID_TOKEN:
-      message = _("Invalid Token");
-      break;
+      return _("Invalid Token");
    default:
-      message = _("An unknown error ocurred during delivery.");
-      break;
+      return _("An unknown error ocurred during delivery.");
    }
-
-   return message;
+   g_assert_not_reached();
 }
 
 static void
