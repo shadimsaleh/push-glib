@@ -94,15 +94,9 @@ connect_cb (GObject      *object,
    gToSend = g_strv_length(gDeviceTokens);
 
    for (i = 0; gDeviceTokens[i]; i++) {
-      identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
-                              "device-token", gDeviceTokens[i],
-                              NULL);
-      push_aps_client_deliver_async(client,
-                                    identity,
-                                    message,
-                                    NULL,
-                                    deliver_cb,
-                                    NULL);
+      identity = push_aps_identity_new(gDeviceTokens[i]);
+      push_aps_client_deliver_async(client, identity, message, NULL,
+                                    deliver_cb, NULL);
       g_object_unref(identity);
    }
 
