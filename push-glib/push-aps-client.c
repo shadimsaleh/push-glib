@@ -216,6 +216,7 @@ push_aps_client_read_gateway_cb (GObject      *object,
       push_aps_client_dispatch(client);
       break;
    default:
+      DUMP_BYTES(gateway, ((guint8 *)&client->priv->gw_read_buf), ret);
       g_assert_cmpint(ret, ==, 6);
       command = buffer[0];
       g_assert_cmpint(command, ==, 8);
@@ -269,6 +270,8 @@ push_aps_client_read_feedback_cb (GObject      *object,
    gssize ret;
    gchar *device_token;
 
+   ENTRY;
+
    g_assert(G_IS_INPUT_STREAM(stream));
 
    priv = client->priv;
@@ -277,12 +280,10 @@ push_aps_client_read_feedback_cb (GObject      *object,
 
    switch (ret) {
    case -1:
-      /* TODO: Failed reading feedback. */
-      break;
    case 0:
-      /* TODO: Eof */
-      break;
+      EXIT;
    default:
+      DUMP_BYTES(feedback, ((guint8 *)&priv->fb_msg), ret);
       if (ret != 38) {
          /* TODO: push_aps_client_fail(client); */
          EXIT;
@@ -311,7 +312,10 @@ push_aps_client_read_feedback_cb (GObject      *object,
                                 client);
       g_object_unref(identity);
       g_free(device_token);
+      EXIT;
    }
+
+   g_assert_not_reached();
 }
 
 static void
@@ -335,6 +339,7 @@ push_aps_client_connect_feedback_cb (GObject      *object,
                                                        &error))) {
       g_warning("Failed to connect to APS feedback: %s", error->message);
       g_error_free(error);
+      EXIT;
    } else {
       stream = g_io_stream_get_input_stream(G_IO_STREAM(conn));
       g_input_stream_read_async(stream,
@@ -345,9 +350,10 @@ push_aps_client_connect_feedback_cb (GObject      *object,
                                 push_aps_client_read_feedback_cb,
                                 client);
       g_object_unref(conn);
+      EXIT;
    }
 
-   EXIT;
+   g_assert_not_reached();
 }
 
 static gboolean
