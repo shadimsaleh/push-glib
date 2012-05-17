@@ -51,6 +51,7 @@ struct _PushApsClientPrivate
    guint last_id;
    guint8 gw_read_buf[6];
    guint feedback_interval;
+   guint feedback_handler;
 };
 
 enum
@@ -226,6 +227,19 @@ push_aps_client_read_gateway_cb (GObject      *object,
    EXIT;
 }
 
+static gboolean
+push_aps_client_feedback_cb (gpointer data)
+{
+   PushApsClient *client = data;
+   gboolean ret = TRUE;
+
+   ENTRY;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+
+   RETURN(ret);
+}
+
 static void
 push_aps_client_connect_gateway_cb (GObject      *object,
                                     GAsyncResult *result,
@@ -253,6 +267,9 @@ push_aps_client_connect_gateway_cb (GObject      *object,
       client->priv->gateway_stream = G_IO_STREAM(conn);
       g_object_unref(client);
 
+      /*
+       * Start reading responses from the TLS stream.
+       */
       input = g_io_stream_get_input_stream(G_IO_STREAM(conn));
       g_input_stream_read_async(input,
                                 client->priv->gw_read_buf,
@@ -261,6 +278,16 @@ push_aps_client_connect_gateway_cb (GObject      *object,
                                 NULL, /* priv->shutdown, */
                                 push_aps_client_read_gateway_cb,
                                 client);
+
+      /*
+       * Setup our timeout to connect to feedback on interval.
+       */
+      if (!client->priv->feedback_handler) {
+         client->priv->feedback_handler =
+            g_timeout_add_seconds(60 * client->priv->feedback_interval,
+                                  (GSourceFunc)push_aps_client_feedback_cb,
+                                  client);
+      }
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, !!conn);
@@ -768,6 +795,11 @@ push_aps_client_finalize (GObject *object)
 
    g_hash_table_unref(priv->results);
    priv->results = NULL;
+
+   if (priv->feedback_handler) {
+      g_source_remove(priv->feedback_handler);
+      priv->feedback_handler = 0;
+   }
 
    G_OBJECT_CLASS(push_aps_client_parent_class)->finalize(object);
 
