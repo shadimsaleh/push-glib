@@ -20,6 +20,9 @@ NOINST_H_FILES += $(top_srcdir)/push-glib/push-debug.h
 
 GIR_FILES =
 GIR_FILES += $(INST_H_FILES)
+GIR_FILES += $(top_srcdir)/push-glib/push-aps-client.c
+GIR_FILES += $(top_srcdir)/push-glib/push-aps-identity.c
+GIR_FILES += $(top_srcdir)/push-glib/push-aps-message.c
 GIR_FILES += $(top_srcdir)/push-glib/push-c2dm-client.c
 GIR_FILES += $(top_srcdir)/push-glib/push-c2dm-identity.c
 GIR_FILES += $(top_srcdir)/push-glib/push-c2dm-message.c
