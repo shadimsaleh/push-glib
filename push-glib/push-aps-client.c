@@ -578,6 +578,7 @@ push_aps_client_connect_finish (PushApsClient  *client,
 static GByteArray *
 push_aps_client_encode (PushApsClient *client,
                         const gchar   *device_token,
+                        GDateTime     *expires_at,
                         const gchar   *message,
                         guint32        request_id)
 {
@@ -609,9 +610,13 @@ push_aps_client_encode (PushApsClient *client,
    g_byte_array_append(ret, (guint8 *)&b32, 4);
 
    /*
-    * TODO: Expiry.
+    * Expiry.
     */
    b32 = 0;
+   if (expires_at) {
+      b32 = (guint32)g_date_time_to_unix(expires_at);
+      b32 = GUINT32_TO_BE(b32);
+   }
    g_byte_array_append(ret, (guint8 *)&b32, 4);
 
    /*
@@ -709,6 +714,7 @@ push_aps_client_deliver_async (PushApsClient       *client,
    *request_id = ++priv->last_id;
    buffer = push_aps_client_encode(client,
                                    device_token,
+                                   push_aps_message_get_expires_at(message),
                                    push_aps_message_get_json(message),
                                    *request_id);
 
