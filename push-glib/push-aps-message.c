@@ -46,6 +46,7 @@ G_DEFINE_TYPE(PushApsMessage, push_aps_message, G_TYPE_OBJECT)
 struct _PushApsMessagePrivate
 {
    GHashTable *extra;
+   GDateTime *expires_at;
    gboolean badge_set;
    gchar *alert;
    guint badge;
@@ -58,6 +59,7 @@ enum
    PROP_0,
    PROP_ALERT,
    PROP_BADGE,
+   PROP_EXPIRES_AT,
    PROP_JSON,
    PROP_SOUND,
    LAST_PROP
@@ -242,6 +244,22 @@ push_aps_message_get_badge (PushApsMessage *message)
 }
 
 /**
+ * push_aps_message_get_expires_at:
+ * @message: A #PushApsMessage.
+ *
+ * Retrieves the "expires-at" property, containing the time that the message
+ * should expire if it could not be delivered.
+ *
+ * Returns: (transfer none): A #GDateTime, or %NULL.
+ */
+GDateTime *
+push_aps_message_get_expires_at (PushApsMessage *message)
+{
+   g_return_val_if_fail(PUSH_IS_APS_MESSAGE(message), NULL);
+   return message->priv->expires_at;
+}
+
+/**
  * push_aps_message_get_sound:
  * @message: (in): A #PushApsMessage.
  *
@@ -298,6 +316,30 @@ push_aps_message_set_badge (PushApsMessage *message,
    g_free(message->priv->json);
    message->priv->json = NULL;
    g_object_notify_by_pspec(G_OBJECT(message), gParamSpecs[PROP_BADGE]);
+}
+
+/**
+ * push_aps_message_set_expires_at:
+ * @message: A #PushApsMessage.
+ * @expires_at: (allow-none): A #GDateTime, or %NULL.
+ *
+ * Sets the "expires-at" property, containing the time at which the message
+ * should expire and further attempts to deliver should be aborted.
+ */
+void
+push_aps_message_set_expires_at (PushApsMessage *message,
+                                 GDateTime      *expires_at)
+{
+   g_return_if_fail(PUSH_IS_APS_MESSAGE(message));
+
+   if (message->priv->expires_at) {
+      g_date_time_unref(message->priv->expires_at);
+      message->priv->expires_at = NULL;
+   }
+
+   if (expires_at) {
+      message->priv->expires_at = g_date_time_ref(expires_at);
+   }
 }
 
 /**
@@ -430,6 +472,15 @@ push_aps_message_class_init (PushApsMessageClass *klass)
                         G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_BADGE,
                                    gParamSpecs[PROP_BADGE]);
+
+   gParamSpecs[PROP_EXPIRES_AT] =
+      g_param_spec_boxed("expires-at",
+                         _("Expires At"),
+                         _("The time at which the notification expires."),
+                         G_TYPE_DATE_TIME,
+                         G_PARAM_READWRITE);
+   g_object_class_install_property(object_class, PROP_EXPIRES_AT,
+                                   gParamSpecs[PROP_EXPIRES_AT]);
 
    gParamSpecs[PROP_JSON] =
       g_param_spec_string("json",
