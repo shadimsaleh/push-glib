@@ -38,6 +38,15 @@
 
 G_DEFINE_TYPE(PushApsClient, push_aps_client, G_TYPE_OBJECT)
 
+#pragma pack(1)
+typedef struct
+{
+   guint32 time;
+   guint16 token_length;
+   guint8 token[32];
+} FeedbackMessage;
+#pragma pack()
+
 struct _PushApsClientPrivate
 {
    PushApsClientMode mode;
@@ -48,7 +57,7 @@ struct _PushApsClientPrivate
    GIOStream *gateway_stream;
    GHashTable *results;
    guint last_id;
-   guint8 fb_read_buf[38];
+   FeedbackMessage fb_msg;
    guint8 gw_read_buf[6];
    guint feedback_interval;
    guint feedback_handler;
@@ -256,8 +265,6 @@ push_aps_client_read_feedback_cb (GObject      *object,
    PushApsIdentity *identity;
    PushApsClient *client = user_data;
    GInputStream *stream = (GInputStream *)object;
-   guint32 tt;
-   guint32 token_len;
    GError *error = NULL;
    gssize ret;
    gchar *device_token;
@@ -276,29 +283,34 @@ push_aps_client_read_feedback_cb (GObject      *object,
       /* TODO: Eof */
       break;
    default:
-      g_assert_cmpint(ret, ==, 38);
-      memcpy(&tt, priv->fb_read_buf, 4);
-      tt = GUINT32_FROM_BE(tt);
-      memcpy(&token_len, &priv->fb_read_buf[4], 2);
-      token_len = GUINT32_FROM_BE(token_len);
-      g_assert_cmpint(token_len, ==, 32);
-      if (token_len == 32) {
-         device_token = g_base64_encode(&priv->fb_read_buf[6], token_len);
-         g_assert(device_token);
-         identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
-                                 "device-token", device_token,
-                                 NULL);
-         g_signal_emit(client, gSignals[IDENTITY_REMOVED], 0, identity);
-         g_object_unref(identity);
-         g_free(device_token);
+      if (ret != 38) {
+         /* TODO: push_aps_client_fail(client); */
+         EXIT;
       }
+      priv->fb_msg.time = GUINT32_FROM_BE(priv->fb_msg.time);
+      priv->fb_msg.token_length = GUINT16_FROM_BE(priv->fb_msg.token_length);
+      if (priv->fb_msg.token_length != 32) {
+         /* TODO: push_aps_client_fail(client); */
+         EXIT;
+      }
+      device_token = g_base64_encode(priv->fb_msg.token, 32);
+      if (!device_token) {
+         /* TODO: push_aps_client_fail(client); */
+         EXIT;
+      }
+      identity = g_object_new(PUSH_TYPE_APS_IDENTITY,
+                              "device-token", device_token,
+                              NULL);
+      g_signal_emit(client, gSignals[IDENTITY_REMOVED], 0, identity);
       g_input_stream_read_async(stream,
-                                client->priv->fb_read_buf,
-                                sizeof client->priv->fb_read_buf,
+                                (guint8 *)&client->priv->fb_msg,
+                                sizeof client->priv->fb_msg,
                                 G_PRIORITY_DEFAULT,
                                 NULL, /* priv->shutdown */
                                 push_aps_client_read_feedback_cb,
                                 client);
+      g_object_unref(identity);
+      g_free(device_token);
    }
 }
 
@@ -326,8 +338,8 @@ push_aps_client_connect_feedback_cb (GObject      *object,
    } else {
       stream = g_io_stream_get_input_stream(G_IO_STREAM(conn));
       g_input_stream_read_async(stream,
-                                client->priv->fb_read_buf,
-                                sizeof client->priv->fb_read_buf,
+                                (guint *)&client->priv->fb_msg,
+                                sizeof client->priv->fb_msg,
                                 G_PRIORITY_DEFAULT,
                                 NULL, /* priv->shutdown */
                                 push_aps_client_read_feedback_cb,
