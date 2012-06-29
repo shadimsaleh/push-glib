@@ -67,6 +67,12 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+PushApsMessage *
+push_aps_message_new (void)
+{
+   return g_object_new(PUSH_TYPE_APS_MESSAGE, NULL);
+}
+
 /**
  * push_aps_message_get_json:
  * @message: (in): A #PushApsMessage.
