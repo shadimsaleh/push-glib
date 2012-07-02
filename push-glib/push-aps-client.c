@@ -100,6 +100,23 @@ static guint       gSignals[LAST_SIGNAL];
 
 static void push_aps_client_try_load_tls (PushApsClient *client);
 
+static gchar *
+_hex_encode (const guint8 *buffer,
+             gsize         len)
+{
+   GString *str;
+   guint i;
+
+   g_assert(buffer);
+   g_assert(len);
+
+   str = g_string_new(NULL);
+   for (i = 0; i < len; i++) {
+      g_string_append_printf(str, "%02x", buffer[i]);
+   }
+   return g_string_free(str, FALSE);
+}
+
 static const gchar *
 get_error_message (PushApsClientError error)
 {
@@ -297,7 +314,7 @@ push_aps_client_read_feedback_cb (GObject      *object,
          /* TODO: push_aps_client_fail(client); */
          EXIT;
       }
-      device_token = g_base64_encode(priv->fb_msg.token, 32);
+      device_token = _hex_encode(priv->fb_msg.token, 32);
       if (!device_token) {
          /* TODO: push_aps_client_fail(client); */
          EXIT;
