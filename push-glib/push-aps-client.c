@@ -565,6 +565,30 @@ push_aps_client_connect_finish (PushApsClient  *client,
    RETURN(ret);
 }
 
+static inline guint8
+from_hex (guint8 c)
+{
+   switch (c) {
+   case '0': return 0;
+   case '1': return 1;
+   case '2': return 2;
+   case '3': return 3;
+   case '4': return 4;
+   case '5': return 5;
+   case '6': return 6;
+   case '7': return 7;
+   case '8': return 8;
+   case '9': return 9;
+   case 'a': return 0xa;
+   case 'b': return 0xb;
+   case 'c': return 0xc;
+   case 'd': return 0xd;
+   case 'e': return 0xe;
+   case 'f': return 0xf;
+   default: return 0;
+   }
+}
+
 static GByteArray *
 push_aps_client_encode (PushApsClient *client,
                         const gchar   *device_token,
@@ -577,6 +601,7 @@ push_aps_client_encode (PushApsClient *client,
    guint16 b16;
    guchar *data;
    guint8 b8;
+   guint i;
    gsize len;
 
    ENTRY;
@@ -588,19 +613,21 @@ push_aps_client_encode (PushApsClient *client,
    ret = g_byte_array_sized_new(64);
 
    /*
-    * Command.
+    * Command (we talk enhanced notification format).
     */
    b8 = 1;
    g_byte_array_append(ret, &b8, 1);
 
    /*
-    * Identifier.
+    * Client side generated identifier for error-response packet.
     */
    b32 = GUINT32_TO_BE(request_id);
    g_byte_array_append(ret, (guint8 *)&b32, 4);
 
    /*
-    * Expiry.
+    * Expiry field (A fixed UNIX epoch date in UTC seconds).
+    * The expiry value should be in network order. If value is positive,
+    * APNs tries to deliver the notification at least once.
     */
    b32 = 0;
    if (expires_at) {
@@ -610,11 +637,25 @@ push_aps_client_encode (PushApsClient *client,
    g_byte_array_append(ret, (guint8 *)&b32, 4);
 
    /*
-    * Token length and token.
+    * Get token length.
     */
-   data = g_base64_decode(device_token, &len);
-   b16 = len;
-   b16 = GUINT16_TO_BE(b16);
+   len = strlen(device_token) / 2;
+   b16 = GUINT16_TO_BE(len);
+   g_assert_cmpint(len % 2, ==, 0);
+
+   /*
+    * Encode the token from hex.
+    */
+   data = g_malloc0(len);
+   for (i = 0; i < len; i++) {
+      guint8 v = (from_hex(device_token[i*2]) << 4)
+               | (from_hex(device_token[i*2+1]));
+      data[i] = v;
+   }
+
+   /*
+    * Add token length and token to buffer.
+    */
    g_byte_array_append(ret, (guint8 *)&b16, 2);
    g_byte_array_append(ret, (guint8 *)data, len);
    g_free(data);
@@ -622,10 +663,10 @@ push_aps_client_encode (PushApsClient *client,
    /*
     * Payload length and payload.
     */
-   b16 = strlen(message);
-   b16 = GUINT16_TO_BE(b16);
+   len = strlen(message);
+   b16 = GUINT16_TO_BE(len);
    g_byte_array_append(ret, (guint8 *)&b16, 2);
-   g_byte_array_append(ret, (guint8 *)message, strlen(message));
+   g_byte_array_append(ret, (guint8 *)message, len);
 
    RETURN(ret);
 }
