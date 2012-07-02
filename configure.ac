@@ -3,7 +3,7 @@ dnl Versioning Macros
 dnl **************************************************************************
 m4_define([push_major_version], [0])
 m4_define([push_minor_version], [1])
-m4_define([push_micro_version], [12])
+m4_define([push_micro_version], [13])
 m4_define([push_version],
           [push_major_version.push_minor_version.push_micro_version])
 m4_define([push_binary_age], [m4_eval(100 * push_minor_version +
