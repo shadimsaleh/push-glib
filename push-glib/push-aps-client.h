@@ -56,6 +56,7 @@ enum _PushApsClientError
    PUSH_APS_CLIENT_ERROR_NOT_CONNECTED        = 256,
    PUSH_APS_CLIENT_ERROR_ALREADY_CONNECTED    = 257,
    PUSH_APS_CLIENT_ERROR_TLS_NOT_AVAILABLE    = 258,
+   PUSH_APS_CLIENT_ERROR_CANCELLED            = 259,
 };
 
 enum _PushApsClientMode
@@ -77,13 +78,6 @@ struct _PushApsClientClass
    GObjectClass parent_class;
 };
 
-void     push_aps_client_connect_async  (PushApsClient        *client,
-                                         GCancellable         *cancellable,
-                                         GAsyncReadyCallback   callback,
-                                         gpointer              user_data);
-gboolean push_aps_client_connect_finish (PushApsClient        *client,
-                                         GAsyncResult         *result,
-                                         GError              **error);
 void     push_aps_client_deliver_async  (PushApsClient        *client,
                                          PushApsIdentity      *identity,
                                          PushApsMessage       *message,

@@ -63,6 +63,11 @@ struct _PushApsClientPrivate
    guint8 gw_read_buf[6];
    guint feedback_interval;
    guint feedback_handler;
+
+   GCancellable *dispose_cancellable;
+
+   guint state;
+   GQueue *queue;
 };
 
 enum
@@ -74,6 +79,14 @@ enum
    PROP_TLS_CERTIFICATE,
    PROP_FEEDBACK_INTERVAL,
    LAST_PROP
+};
+
+enum
+{
+   STATE_0,
+   STATE_CONNECTING,
+   STATE_CONNECTED,
+   STATE_DISPOSED,
 };
 
 enum
@@ -387,6 +400,70 @@ push_aps_client_feedback_cb (gpointer data)
 }
 
 static void
+push_aps_client_write (PushApsClient *client,
+                       GByteArray    *buffer)
+{
+   PushApsClientPrivate *priv;
+   GOutputStream *stream;
+   GError *error = NULL;
+   gsize bytes_written;
+
+   ENTRY;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+   g_assert(client->priv->gateway_stream);
+   g_assert(buffer);
+
+   priv = client->priv;
+
+   stream = g_io_stream_get_output_stream(priv->gateway_stream);
+   g_assert(stream);
+
+   /*
+    * TODO: Probably should do this asynchronously.
+    */
+
+   DUMP_BYTES(buffer, buffer->data, buffer->len);
+
+   if (!g_output_stream_write_all(stream,
+                                  (gconstpointer)buffer->data,
+                                  buffer->len,
+                                  &bytes_written,
+                                  NULL,
+                                  &error)) {
+      g_warning("Failed to write to APS stream: %s", error->message);
+      g_error_free(error);
+      EXIT;
+   }
+
+   g_assert_cmpint(bytes_written, ==, buffer->len);
+
+   EXIT;
+}
+
+static void
+push_aps_client_queue (PushApsClient *client,
+                       GByteArray    *buffer)
+{
+   PushApsClientPrivate *priv;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+   g_assert(buffer);
+
+   ENTRY;
+
+   priv = client->priv;
+
+   if (priv->state == STATE_CONNECTED) {
+      push_aps_client_write(client, buffer);
+   } else {
+      g_queue_push_tail(priv->queue, g_byte_array_ref(buffer));
+   }
+
+   EXIT;
+}
+
+static void
 push_aps_client_connect_gateway_cb (GObject      *object,
                                     GAsyncResult *result,
                                     gpointer      user_data)
@@ -396,6 +473,7 @@ push_aps_client_connect_gateway_cb (GObject      *object,
    GSocketClient *socket_client = (GSocketClient *)object;
    PushApsClient *client;
    GInputStream *input;
+   GByteArray *buffer;
    GError *error = NULL;
 
    ENTRY;
@@ -403,15 +481,19 @@ push_aps_client_connect_gateway_cb (GObject      *object,
    g_assert(G_IS_SOCKET_CLIENT(socket_client));
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
+   client = PUSH_APS_CLIENT(g_async_result_get_source_object(user_data));
+
    if (!(conn = g_socket_client_connect_to_host_finish(socket_client,
                                                        result,
                                                        &error))) {
+      if (client->priv->state != STATE_DISPOSED) {
+         client->priv->state = STATE_0;
+      }
       g_simple_async_result_take_error(simple, error);
    } else {
-      client = PUSH_APS_CLIENT(g_async_result_get_source_object(user_data));
+      client->priv->state = STATE_CONNECTED;
       g_clear_object(&client->priv->gateway_stream);
       client->priv->gateway_stream = G_IO_STREAM(conn);
-      g_object_unref(client);
 
       /*
        * Start reading responses from the TLS stream.
@@ -434,11 +516,20 @@ push_aps_client_connect_gateway_cb (GObject      *object,
                                   (GSourceFunc)push_aps_client_feedback_cb,
                                   client);
       }
+
+      /*
+       * Flush any pending requests.
+       */
+      while ((buffer = g_queue_pop_head(client->priv->queue))) {
+         push_aps_client_write(client, buffer);
+         g_byte_array_unref(buffer);
+      }
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, !!conn);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
+   g_object_unref(client);
 
    EXIT;
 }
@@ -461,7 +552,7 @@ push_aps_client_connect_gateway_cb (GObject      *object,
  * If "mode" is set to PUSH_APS_CLIENT_SANDBOX, then the client will connect
  * to "gateway.sandbox.push.apple.com" instead of "gateway.push.apple.com".
  */
-void
+static void
 push_aps_client_connect_async (PushApsClient       *client,
                                GCancellable        *cancellable,
                                GAsyncReadyCallback  callback,
@@ -476,8 +567,11 @@ push_aps_client_connect_async (PushApsClient       *client,
 
    g_return_if_fail(PUSH_IS_APS_CLIENT(client));
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(client->priv->state == STATE_0);
 
    priv = client->priv;
+
+   priv->state = STATE_CONNECTING;
 
    if (priv->tls_error) {
       g_simple_async_report_gerror_in_idle(G_OBJECT(client),
@@ -545,7 +639,7 @@ push_aps_client_connect_async (PushApsClient       *client,
  *
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
-gboolean
+static gboolean
 push_aps_client_connect_finish (PushApsClient  *client,
                                 GAsyncResult   *result,
                                 GError        **error)
@@ -680,20 +774,55 @@ push_aps_client_complete_result (GSimpleAsyncResult *simple)
    ENTRY;
 
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
-   client = g_object_get_data(G_OBJECT(simple), "client");
+   client = PUSH_APS_CLIENT(
+         g_async_result_get_source_object(
+               G_ASYNC_RESULT(simple)));
+   g_assert(PUSH_IS_APS_CLIENT(client));
    request_id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(simple),
                                                   "request-id"));
-   g_assert(PUSH_IS_APS_CLIENT(client));
 
-   if (g_hash_table_lookup(client->priv->results, &request_id)) {
-      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-      g_simple_async_result_complete_in_idle(simple);
-      g_hash_table_remove(client->priv->results, &request_id);
+   if (client->priv->results) {
+      if (g_hash_table_lookup(client->priv->results, &request_id)) {
+         g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+         g_simple_async_result_complete_in_idle(simple);
+         g_hash_table_remove(client->priv->results, &request_id);
+      }
    }
 
    g_object_unref(simple);
+   g_object_unref(client);
 
    RETURN(FALSE);
+}
+
+static void
+push_aps_client_connect_gateway_cb2 (GObject      *object,
+                                     GAsyncResult *result,
+                                     gpointer      user_data)
+{
+   PushApsClientPrivate *priv;
+   PushApsClient *client = (PushApsClient *)object;
+   GError *error = NULL;
+
+   g_assert(PUSH_IS_APS_CLIENT(client));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(result));
+
+   priv = client->priv;
+
+   if (!push_aps_client_connect_finish(client, result, &error)) {
+      if (priv->state == STATE_0) {
+         /*
+          * TODO: Add exponential backoff.
+          */
+         push_aps_client_connect_async(client,
+                                       priv->dispose_cancellable,
+                                       push_aps_client_connect_gateway_cb2,
+                                       NULL);
+         EXIT;
+      }
+   }
+
+   EXIT;
 }
 
 /**
@@ -722,12 +851,9 @@ push_aps_client_deliver_async (PushApsClient       *client,
 {
    PushApsClientPrivate *priv;
    GSimpleAsyncResult *simple;
-   GOutputStream *stream;
    const gchar *device_token;
    GByteArray *buffer;
    guint32 *request_id;
-   GError *error = NULL;
-   gsize bytes_written;
 
    ENTRY;
 
@@ -747,21 +873,23 @@ push_aps_client_deliver_async (PushApsClient       *client,
       EXIT;
    }
 
-   if (!priv->gateway_stream) {
-      g_simple_async_report_error_in_idle(G_OBJECT(client),
-                                          callback,
-                                          user_data,
-                                          PUSH_APS_CLIENT_ERROR,
-                                          PUSH_APS_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Not currently connected to "
-                                            "APS gateway."));
-      EXIT;
+   /*
+    * Start connecting if needed.
+    */
+   if (priv->state == STATE_0) {
+      push_aps_client_connect_async(client,
+                                    priv->dispose_cancellable,
+                                    push_aps_client_connect_gateway_cb2,
+                                    NULL);
    }
 
+   /*
+    * Build buffer to deliver to gateway and async result for
+    * completion of asynchronous request.
+    */
    device_token = push_aps_identity_get_device_token(identity);
    request_id = g_new0(guint32, 1);
    *request_id = ++priv->last_id;
-
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       push_aps_client_deliver_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
@@ -769,43 +897,27 @@ push_aps_client_deliver_async (PushApsClient       *client,
                           g_strdup(device_token), g_free);
    g_object_set_data(G_OBJECT(simple), "request-id",
                      GINT_TO_POINTER(*request_id));
-
    buffer = push_aps_client_encode(client,
                                    device_token,
                                    push_aps_message_get_expires_at(message),
                                    push_aps_message_get_json(message),
                                    *request_id);
-
    g_hash_table_insert(priv->results, request_id, simple);
 
    /*
-    * APS does not find it acceptable to tell us that it has suceeded
-    * in accepting a notification. It only notifies us if there was
-    * an error in the request (such as an invalid token). So we have
-    * to synthesize success after a timeout period, after which, it is
-    * still possible that they were just very delayed in replying with
-    * an error.
+    * Add a timeout to complete the request if we don't get notified of
+    * success (which is what usually happens).
     */
-   {
-      g_object_set_data_full(G_OBJECT(simple), "client",
-                             g_object_ref(client),
-                             g_object_unref);
-      g_timeout_add_seconds(PUSH_APS_CLIENT_TIMEOUT_SECONDS,
-                            (GSourceFunc)push_aps_client_complete_result,
-                            g_object_ref(simple));
-   }
+   g_timeout_add_seconds(1,
+                         (GSourceFunc)push_aps_client_complete_result,
+                         g_object_ref(simple));
 
-   stream = g_io_stream_get_output_stream(priv->gateway_stream);
-   if (!g_output_stream_write_all(stream,
-                                  buffer->data,
-                                  buffer->len,
-                                  &bytes_written,
-                                  NULL, /* priv->shutdown, */
-                                  &error)) {
-      /* TODO: push_aps_client_fail(client); */
-   }
+   /*
+    * Write bytes to gateway immediately if we can, otherwise queue them.
+    */
+   push_aps_client_queue(client, buffer);
 
-   g_byte_array_free(buffer, TRUE);
+   g_byte_array_unref(buffer);
 
    EXIT;
 }
@@ -992,6 +1104,63 @@ push_aps_client_set_feedback_interval (PushApsClient *client,
 }
 
 static void
+push_aps_client_dispose (GObject *object)
+{
+   PushApsClientPrivate *priv;
+   GHashTableIter iter;
+   GHashTable *hash;
+   GByteArray *array;
+   gpointer key;
+   gpointer value;
+
+   ENTRY;
+
+   priv = PUSH_APS_CLIENT(object)->priv;
+
+   priv->state = STATE_DISPOSED;
+
+   if (priv->dispose_cancellable) {
+      g_cancellable_cancel(priv->dispose_cancellable);
+      g_clear_object(&priv->dispose_cancellable);
+   }
+
+   if (priv->gateway_stream) {
+      g_io_stream_close(priv->gateway_stream, NULL, NULL);
+      g_clear_object(&priv->gateway_stream);
+   }
+
+   while ((array = g_queue_pop_head(priv->queue))) {
+      g_byte_array_free(array, TRUE);
+   }
+
+   g_queue_free(priv->queue);
+   priv->queue = NULL;
+
+   if ((hash = priv->results)) {
+      priv->results = NULL;
+      g_hash_table_iter_init(&iter, hash);
+      while (g_hash_table_iter_next(&iter, &key, &value)) {
+         g_simple_async_result_set_error(value,
+                                         PUSH_APS_CLIENT_ERROR,
+                                         PUSH_APS_CLIENT_ERROR_CANCELLED,
+                                         _("Request was cancelled due to "
+                                           "shutting down."));
+         g_simple_async_result_complete_in_idle(value);
+      }
+      g_hash_table_unref(hash);
+   }
+
+   if (priv->feedback_handler) {
+      g_source_remove(priv->feedback_handler);
+      priv->feedback_handler = 0;
+   }
+
+   g_clear_object(&priv->tls_certificate);
+
+   EXIT;
+}
+
+static void
 push_aps_client_finalize (GObject *object)
 {
    PushApsClientPrivate *priv;
@@ -1006,17 +1175,7 @@ push_aps_client_finalize (GObject *object)
    g_free(priv->ssl_key_file);
    priv->ssl_key_file = NULL;
 
-   g_clear_object(&priv->tls_certificate);
-
    g_clear_error(&priv->tls_error);
-
-   g_hash_table_unref(priv->results);
-   priv->results = NULL;
-
-   if (priv->feedback_handler) {
-      g_source_remove(priv->feedback_handler);
-      priv->feedback_handler = 0;
-   }
 
    G_OBJECT_CLASS(push_aps_client_parent_class)->finalize(object);
 
@@ -1089,6 +1248,7 @@ push_aps_client_class_init (PushApsClientClass *klass)
    ENTRY;
 
    object_class = G_OBJECT_CLASS(klass);
+   object_class->dispose = push_aps_client_dispose;
    object_class->finalize = push_aps_client_finalize;
    object_class->get_property = push_aps_client_get_property;
    object_class->set_property = push_aps_client_set_property;
@@ -1170,6 +1330,7 @@ push_aps_client_init (PushApsClient *client)
                             g_free, g_object_unref);
    client->priv->last_id = g_random_int();
    client->priv->feedback_interval = 10;
+   client->priv->queue = g_queue_new();
    EXIT;
 }
 
@@ -1179,12 +1340,8 @@ push_aps_client_mode_get_type (void)
    static GType type_id;
    static gsize initialized = FALSE;
    static GEnumValue values[] = {
-      { PUSH_APS_CLIENT_PRODUCTION,
-        "PUSH_APS_CLIENT_PRODUCTION",
-        "PRODUCTION" },
-      { PUSH_APS_CLIENT_SANDBOX,
-        "PUSH_APS_CLIENT_SANDBOX",
-        "SANDBOX" },
+      { PUSH_APS_CLIENT_PRODUCTION, "PUSH_APS_CLIENT_PRODUCTION", "PRODUCTION" },
+      { PUSH_APS_CLIENT_SANDBOX, "PUSH_APS_CLIENT_SANDBOX", "SANDBOX" },
       { 0 }
    };
 
