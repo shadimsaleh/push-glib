@@ -96,7 +96,7 @@
         }                                                           \
         if (_i != 16) {                                             \
             g_log(G_LOG_DOMAIN, G_LOG_LEVEL_TRACE,                  \
-                  "%-56s  %s", str->str, astr->str);                \
+                  "%-56s   %s", str->str, astr->str);               \
         }                                                           \
         g_string_free(str, TRUE);                                   \
         g_string_free(astr, TRUE);                                  \
