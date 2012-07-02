@@ -67,8 +67,6 @@ struct _PushC2dmClientClass
    SoupSessionAsyncClass parent_class;
 };
 
-GQuark   push_c2dm_client_error_quark    (void) G_GNUC_CONST;
-GType    push_c2dm_client_get_type       (void) G_GNUC_CONST;
 void     push_c2dm_client_deliver_async  (PushC2dmClient       *client,
                                           PushC2dmIdentity     *identity,
                                           PushC2dmMessage      *message,
@@ -78,6 +76,8 @@ void     push_c2dm_client_deliver_async  (PushC2dmClient       *client,
 gboolean push_c2dm_client_deliver_finish (PushC2dmClient       *client,
                                           GAsyncResult         *result,
                                           GError              **error);
+GQuark   push_c2dm_client_error_quark    (void) G_GNUC_CONST;
+GType    push_c2dm_client_get_type       (void) G_GNUC_CONST;
 
 G_END_DECLS
 
