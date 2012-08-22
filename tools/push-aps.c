@@ -23,6 +23,7 @@
 static gchar         *gAlert;
 static guint          gBadge;
 static gchar         *gCertFile;
+static gchar        **gExtras;
 static gchar         *gKeyFile;
 static gchar        **gDeviceTokens;
 static gboolean       gSandbox;
@@ -44,6 +45,8 @@ static GOptionEntry   gEntries[] = {
      N_("Use the APS sandbox for delivery.") },
    { "sound", 'n', 0, G_OPTION_ARG_STRING, &gSound,
      N_("The sound file to play.") },
+   { "extra", 'e', 0, G_OPTION_ARG_STRING_ARRAY, &gExtras,
+     N_("Extra fields to set in message. [-e key=value]") },
    { 0 }
 };
 
@@ -77,6 +80,7 @@ main (gint   argc,
    PushApsMessage *message;
    PushApsClient *client;
    GError *error = NULL;
+   gchar **split;
    guint i;
 
    g_set_prgname("push-aps");
@@ -111,6 +115,14 @@ main (gint   argc,
                           "badge", gBadge,
                           "sound", gSound,
                           NULL);
+
+   for (i = 0; gExtras && gExtras[i]; i++) {
+      split = g_strsplit(gExtras[i], "=", 2);
+      if (g_strv_length(split) > 1) {
+         push_aps_message_add_extra_string(message, split[0], split[1]);
+      }
+      g_strfreev(split);
+   }
 
    gToSend = g_strv_length(gDeviceTokens);
 
