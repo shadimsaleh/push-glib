@@ -62,6 +62,7 @@ GDateTime      *push_aps_message_get_expires_at   (PushApsMessage *message);
 const gchar    *push_aps_message_get_json         (PushApsMessage *message);
 const gchar    *push_aps_message_get_sound        (PushApsMessage *message);
 PushApsMessage *push_aps_message_new              (void);
+PushApsMessage *push_aps_message_new_from_json    (JsonObject     *object);
 void            push_aps_message_set_alert        (PushApsMessage *message,
                                                    const gchar    *alert);
 void            push_aps_message_set_badge        (PushApsMessage *message,

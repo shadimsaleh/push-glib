@@ -73,6 +73,52 @@ push_aps_message_new (void)
    return g_object_new(PUSH_TYPE_APS_MESSAGE, NULL);
 }
 
+PushApsMessage *
+push_aps_message_new_from_json (JsonObject *object)
+{
+   PushApsMessage *message;
+   JsonNode *node;
+   GList *list;
+   GList *iter;
+
+   ENTRY;
+
+   message = push_aps_message_new();
+
+   if (!object) {
+      RETURN(message);
+   }
+
+   list = json_object_get_members(object);
+
+   for (iter = list; iter; iter = iter->next) {
+      node = json_object_get_member(object, iter->data);
+      if (!g_strcmp0(iter->data, "alert")) {
+         if (json_node_get_value_type(node) == G_TYPE_STRING) {
+            push_aps_message_set_alert(message, json_node_get_string(node));
+         } else {
+            /*
+             * TODO: Handle JSON sub-items.
+             */
+         }
+      } else if (!g_strcmp0(iter->data, "badge")) {
+         if (json_node_get_value_type(node) == G_TYPE_INT64) {
+            push_aps_message_set_badge(message, json_node_get_int(node));
+         }
+      } else if (!g_strcmp0(iter->data, "sound")) {
+         if (json_node_get_value_type(node) == G_TYPE_STRING) {
+            push_aps_message_set_sound(message, json_node_get_string(node));
+         }
+      } else {
+         push_aps_message_add_extra(message, iter->data, node);
+      }
+   }
+
+   g_list_free(list);
+
+   RETURN(message);
+}
+
 /**
  * push_aps_message_get_json:
  * @message: (in): A #PushApsMessage.
